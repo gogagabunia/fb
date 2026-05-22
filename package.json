@@ -10,8 +10,8 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "db:generate": "yarn workspace database prisma generate",
-    "db:migrate": "yarn workspace database prisma db push",
+    "db:generate": "npx prisma generate --schema=packages/database/prisma/schema.prisma",
+    "db:migrate": "npx prisma db push --schema=packages/database/prisma/schema.prisma",
     "test:ingest": "ts-node scripts/test-ingestion.ts"
   },
   "devDependencies": {
