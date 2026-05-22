@@ -12,7 +12,9 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "lucide-react": "^0.300.0",
-    "database": "file:../../packages/database"
+    "database": "file:../../packages/database",
+    "openai": "^6.38.0",
+    "playwright": "^1.60.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
