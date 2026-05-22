@@ -1,5 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
+
+// Custom lightweight NestJS mock decorators & Logger to prevent Next.js bundle tracing from importing @nestjs/common
+const Injectable = () => (target: any) => {};
+class Logger {
+  constructor(private name: string) {}
+  log(msg: string) { console.log(`[${this.name}] ${msg}`); }
+  warn(msg: string) { console.warn(`[${this.name}] ${msg}`); }
+  error(msg: string) { console.error(`[${this.name}] ${msg}`); }
+}
 
 export interface ExtractedListing {
   isListing: boolean;
