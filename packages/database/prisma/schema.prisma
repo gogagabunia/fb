@@ -27,8 +27,9 @@ enum ScrapingStatus {
 
 model User {
   id             String           @id @default(uuid())
-  clerkId        String           @unique
+  clerkId        String?          @unique
   email          String           @unique
+  passwordHash   String?
   firstName      String?
   lastName       String?
   imageUrl       String?

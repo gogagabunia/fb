@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getDashboardStats, triggerScrapingAction } from '../actions';
+import { getCurrentUser, logoutAction } from '../auth-actions';
 
 interface ScrapingLog {
   id: string;
@@ -34,11 +35,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [user, setUser] = useState<{ firstName: string | null; lastName: string | null; email: string } | null>(null);
 
   async function loadData() {
     try {
       const data = await getDashboardStats();
       setStats(data as any);
+      const currentUser = await getCurrentUser();
+      setUser(currentUser as any);
     } catch (error) {
       console.error('Failed to get dashboard stats:', error);
     } finally {
@@ -105,7 +109,9 @@ export default function DashboardPage() {
         <aside className="w-64 bg-surface border-r border-outline-variant/30 flex flex-col p-md gap-xs shrink-0 h-full">
           <div className="mb-xl px-xs py-sm">
             <h1 className="text-headline-sm font-bold text-primary">GroupMarket</h1>
-            <p className="text-body-sm text-on-surface-variant font-medium">Seller Portal</p>
+            <p className="text-body-sm text-on-surface-variant font-medium truncate">
+              {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Seller Portal'}
+            </p>
           </div>
           <nav className="flex-grow flex flex-col gap-xs">
             <Link
@@ -156,6 +162,15 @@ export default function DashboardPage() {
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
               Live Serverless DB
             </div>
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="mt-sm w-full py-sm text-on-surface-variant hover:bg-error-container hover:text-on-error-container rounded-lg text-label-md font-medium transition-all flex items-center justify-center gap-xs"
+              >
+                <span className="material-symbols-outlined text-[18px]">logout</span>
+                Sign Out
+              </button>
+            </form>
           </div>
         </aside>
 

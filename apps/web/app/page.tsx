@@ -30,10 +30,10 @@ export default function HomePage() {
               favorite
             </button>
             <div className="h-8 w-px bg-outline-variant/30 mx-xs"></div>
-            <Link href="/dashboard" className="px-lg py-2.5 rounded-lg font-label-md text-primary hover:bg-surface-container-low transition-all">
+            <Link href="/login" className="px-lg py-2.5 rounded-lg font-label-md text-primary hover:bg-surface-container-low transition-all">
               Login
             </Link>
-            <Link href="/dashboard" className="bg-primary text-on-primary px-lg py-2.5 rounded-lg font-label-md shadow-sm hover:scale-[0.98] transition-all">
+            <Link href="/register" className="bg-primary text-on-primary px-lg py-2.5 rounded-lg font-label-md shadow-sm hover:scale-[0.98] transition-all">
               Register
             </Link>
           </div>
@@ -55,7 +55,7 @@ export default function HomePage() {
                 Transform chaotic social media selling into a structured, searchable, and professional storefront. Automatically import listings while keeping total control.
               </p>
               <div className="flex flex-wrap gap-md">
-                <Link href="/dashboard" className="bg-secondary text-on-secondary px-xl py-lg rounded-xl font-headline-sm shadow-lg hover:shadow-xl hover:scale-[0.98] transition-all flex items-center justify-center gap-sm">
+                <Link href="/register" className="bg-secondary text-on-secondary px-xl py-lg rounded-xl font-headline-sm shadow-lg hover:shadow-xl hover:scale-[0.98] transition-all flex items-center justify-center gap-sm">
                   Get Started
                   <span className="material-symbols-outlined">arrow_forward</span>
                 </Link>
@@ -285,7 +285,7 @@ export default function HomePage() {
                     Join thousands of admins who have professionalized their community commerce in under 5 minutes.
                   </p>
                 </div>
-                <Link href="/dashboard" className="bg-secondary-container text-on-secondary-container px-xl py-lg rounded-2xl font-headline-sm hover:scale-105 transition-all whitespace-nowrap">
+                <Link href="/register" className="bg-secondary-container text-on-secondary-container px-xl py-lg rounded-2xl font-headline-sm hover:scale-105 transition-all whitespace-nowrap">
                   Sync Your Group Now
                 </Link>
               </div>
