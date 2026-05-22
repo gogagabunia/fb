@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GroupMarket | Premium Auto Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#00714d",
+                        "surface-tint": "#4f6073",
+                        "background": "#f8f9fa",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-tertiary-container": "#8292aa",
+                        "primary": "#041627",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f3f4f5",
+                        "on-primary-fixed-variant": "#38485a",
+                        "tertiary-container": "#1b2b3f",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#002113",
+                        "outline-variant": "#c4c6cd",
+                        "primary-container": "#1a2b3c",
+                        "secondary-container": "#6cf8bb",
+                        "primary-fixed-dim": "#b7c8de",
+                        "surface": "#f8f9fa",
+                        "on-surface": "#191c1d",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-surface-variant": "#44474c",
+                        "on-primary-container": "#8192a7",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#b7c8de",
+                        "outline": "#74777d",
+                        "secondary": "#006c49",
+                        "on-secondary-fixed-variant": "#005236",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#0b1d2d",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "surface-dim": "#d9dadb",
+                        "surface-variant": "#e1e3e4",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-background": "#191c1d",
+                        "surface-bright": "#f8f9fa",
+                        "tertiary": "#051629",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#4edea3",
+                        "primary-fixed": "#d2e4fb",
+                        "inverse-surface": "#2e3132",
+                        "surface-container": "#edeeef"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "base": "4px",
+                        "gutter": "24px",
+                        "sm": "12px",
+                        "lg": "24px",
+                        "xs": "8px",
+                        "xl": "32px",
+                        "xxl": "48px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .backdrop-blur-nav {
+            backdrop-filter: blur(10px);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    </style>
+    <script src="/assets/js/shared-state.js"></script>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-secondary-container">
+<!-- Top Navigation -->
+<nav class="bg-surface/80 backdrop-blur-md text-primary docked full-width top-0 sticky z-50 border-b border-outline-variant/30 shadow-sm">
+<div class="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto h-16">
+<div class="flex items-center gap-xl">
+<a href="/index.html" class="text-headline-md font-headline-md font-bold text-primary">GroupMarket</a>
+<div class="hidden md:flex items-center bg-surface-container-low px-md py-xs rounded-full border border-outline-variant/20 focus-within:ring-2 focus-within:ring-primary/10 transition-all w-80">
+<span class="material-symbols-outlined text-on-surface-variant mr-xs" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-full p-0 placeholder:text-on-surface-variant/60" placeholder="Search premium listings..." type="text"/>
+</div>
+</div>
+<div class="hidden md:flex items-center gap-lg">
+<a class="text-primary border-b-2 border-primary pb-1 font-label-md" href="/marketplace.html">Browse</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="#">Groups</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="#">Categories</a>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined p-xs hover:bg-surface-container-low rounded-full transition-all text-on-surface-variant" data-icon="favorite">favorite</button>
+<button class="material-symbols-outlined p-xs hover:bg-surface-container-low rounded-full transition-all text-on-surface-variant" data-icon="notifications">notifications</button>
+<button class="bg-primary text-on-primary px-lg py-xs rounded-lg font-label-md hover:opacity-90 active:scale-[0.98] transition-all">List Item</button>
+<a href="/dashboard.html" class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/30 block">
+<img alt="User profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9ThJLNagGxUr6zXYbmk8Gyhb5Ik8Te58DtM10gaj0ZPRFKu54iJXJ5GObeOhfXAQ5fHMTgJo4wxforvJMBo9CjaFmICBMGUA-HeqqzCQamXQ_GcyaA0VGgg3bXgWruO_PIk8r8KqMEtbU9MY8t21tJxP3w7HfyjYXUDXykBx0B7dRsCObIDBvXeYRx_3E7o60Lo9CFVK6xgs6vvMD_yVhD1wNeWycEwlJsx77I33yZH6JgfTKpoy_k8zSxjW7hpHQ3jqhqRXTf6U"/>
+</div>
+</div>
+</div>
+</nav>
+<main class="max-w-container-max mx-auto px-lg py-xl flex flex-col md:flex-row gap-xl">
+<!-- Sidebar Filters -->
+<aside class="w-full md:w-64 flex-shrink-0">
+<div class="sticky top-24 space-y-xl">
+<div>
+<h3 class="font-headline-sm text-headline-sm mb-md">Marketplace</h3>
+<nav class="space-y-xs">
+<a class="flex items-center gap-sm p-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-sm p-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/imported-posts.html">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+<span class="text-label-md">My Listings</span>
+</a>
+<a class="flex items-center gap-sm p-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/add-group.html">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="text-label-md">Connected Groups</span>
+</a>
+<a class="flex items-center gap-sm p-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+<span class="text-label-md">Messages</span>
+</a>
+</nav>
+</div>
+<div class="pt-xl border-t border-outline-variant/30">
+<h4 class="text-label-sm font-label-sm text-on-surface-variant/60 uppercase tracking-widest mb-md">Filters</h4>
+<div class="space-y-md">
+<div class="group">
+<label class="text-label-md font-semibold mb-xs block">Price Range</label>
+<div class="flex items-center gap-xs">
+<input class="w-full bg-white border-outline-variant border rounded-lg px-sm py-xs text-body-sm focus:ring-primary focus:border-primary" placeholder="Min" type="text"/>
+<span class="text-on-surface-variant">-</span>
+<input class="w-full bg-white border-outline-variant border rounded-lg px-sm py-xs text-body-sm focus:ring-primary focus:border-primary" placeholder="Max" type="text"/>
+</div>
+</div>
+<div>
+<label class="text-label-md font-semibold mb-xs block">Body Type</label>
+<div class="flex flex-wrap gap-xs">
+<span class="bg-surface-container-low text-on-surface px-sm py-1 rounded-full text-label-sm border border-outline-variant/20 hover:border-primary cursor-pointer transition-colors">Sedan</span>
+<span class="bg-surface-container-low text-on-surface px-sm py-1 rounded-full text-label-sm border border-outline-variant/20 hover:border-primary cursor-pointer transition-colors">SUV</span>
+<span class="bg-primary text-on-primary px-sm py-1 rounded-full text-label-sm">Coupe</span>
+<span class="bg-surface-container-low text-on-surface px-sm py-1 rounded-full text-label-sm border border-outline-variant/20 hover:border-primary cursor-pointer transition-colors">Luxury</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Listing Content -->
+<section class="flex-grow">
+<!-- Featured Section (Asymmetric Layout) -->
+<div class="mb-xxl">
+<div class="flex items-end justify-between mb-lg">
+<div>
+<h2 class="text-headline-lg font-headline-lg mb-xs">Premium Inventory</h2>
+<p class="text-on-surface-variant text-body-md">Curated selection from verified local groups.</p>
+</div>
+<div class="flex gap-xs">
+<button class="p-xs rounded-full border border-outline-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<button class="p-xs rounded-full border border-outline-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Bento-style Hero Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-lg h-auto md:h-[500px]">
+<div class="md:col-span-2 relative group overflow-hidden rounded-xl border border-outline-variant/20 shadow-sm">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="A side view of a sleek, dark grey Porsche 911 parked on a quiet urban street at dusk. The city lights are softly blurred in the background, creating a moody, professional atmosphere. The car's metallic finish reflects the golden hour light, highlighting its aerodynamic curves and luxury presence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAqsSCSMYnw9O-79PL71UWyoAfEV9RMemPJ7B5Z9Z_d9IccfWO5fjksvb51iaFRWLQEsljXGX63OgdAlqsXMcCj2LrQJvuC-ovGG14cISik8KOb_o7TxW--t98sl8iHCM_AiO4EEEEIAePwGITv5Rt1a0SwpprWh_DPN7JeBjTgz74KyKw8jFUBD5zVN_ivKUiNBJxuulz3turHY9hBgFBQ_6c28CZcmbyKQbh0vmJDu-uiuiBjfx1X4ciMDBvagFnVJwqy32vaPo"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/80 via-transparent to-transparent flex flex-col justify-end p-xl">
+<div class="flex items-center gap-xs mb-sm">
+<span class="bg-secondary-container text-on-secondary-container text-label-sm px-sm py-0.5 rounded-full font-bold">NEW ARRIVAL</span>
+<span class="bg-white/10 backdrop-blur-md text-white text-label-sm px-sm py-0.5 rounded-full border border-white/20">Verified Group</span>
+</div>
+<h3 class="text-white text-display-lg font-display-lg mb-xs">Porsche 911 Carrera S</h3>
+<div class="flex justify-between items-end">
+<p class="text-white/80 text-body-lg">$114,900 • 12,400 mi</p>
+<a href="/listing-detail.html" class="bg-white text-primary px-xl py-md rounded-lg font-label-md hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center">View Detail</a>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-lg">
+<div class="h-1/2 relative group overflow-hidden rounded-xl border border-outline-variant/20 shadow-sm">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="A front three-quarter view of a white modern BMW M4 Competition parked in a minimalist, high-contrast concrete architectural setting. The lighting is sharp and clean, emphasizing the car's aggressive grille and headlight design. The aesthetic is ultra-modern and high-end SaaS style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDy11pSSycveszZZS6UcuRZRtXTy2xXbTpDOi5CMddiU8MmLk3Sa9jUq7ShvTsXi2bJcRYPV2KxUijLsIIUCuE3Vrem7wgMxZ8MbSKbdI--tJy7suRvY06PSf9n7_Ekf9nHzDLheANtq3mX9Cgrm7G4zr6TbEw-FcSDn_FSX6gOopsz87KZD4MvpTN1M62n6M1H8ZqujSFG3tHtqQYyW7hoc1OsQ1eRDpEzeUJgziDno6gyMlMYfIu5U9yeScoErOy_BRb2hh3oa2s"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex flex-col justify-end p-lg">
+<h4 class="text-white font-headline-sm">BMW M4 Competition</h4>
+<p class="text-white/90 text-label-md">$78,500</p>
+</div>
+</div>
+<div class="h-1/2 bg-primary-container rounded-xl p-lg flex flex-col justify-between border border-outline-variant/20 relative overflow-hidden">
+<div class="relative z-10">
+<span class="material-symbols-outlined text-secondary-fixed text-4xl mb-md" data-icon="auto_awesome">auto_awesome</span>
+<h4 class="text-on-primary-container text-headline-sm">Sell yours today</h4>
+<p class="text-on-primary-container/70 text-body-sm mt-xs">Reach 50k+ active buyers in verified groups.</p>
+</div>
+<button class="relative z-10 w-full py-md bg-secondary text-on-secondary rounded-lg font-label-md hover:opacity-90 transition-all">Get Started</button>
+<div class="absolute -bottom-4 -right-4 opacity-10">
+<span class="material-symbols-outlined text-9xl" data-icon="trending_up">trending_up</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Standard List Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-lg" id="listings-grid"></div>
+<!-- Pagination / Load More -->
+<div class="mt-xxl flex justify-center">
+<button class="flex items-center gap-sm px-xl py-md bg-surface-container-high text-primary rounded-full font-label-md hover:bg-surface-container-highest transition-all">
+<span>Explore More Listings</span>
+<span class="material-symbols-outlined" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</section>
+</main>
+<!-- Mobile Navigation (Hidden on Web) -->
+<div class="md:hidden fixed bottom-0 w-full z-50 bg-surface/95 backdrop-blur-lg border-t border-outline-variant/20 shadow-lg h-16 flex justify-around items-center pb-safe px-md">
+<a class="flex flex-col items-center justify-center text-secondary font-bold transition-transform active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="text-label-sm">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-container-high p-xs rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="text-label-sm">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-container-high p-xs rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="text-label-sm">Groups</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-container-high p-xs rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person_outline">person_outline</span>
+<span class="text-label-sm">Profile</span>
+</a>
+</div>
+<script>
+        // Simple Interaction logic
+        document.querySelectorAll('a, button').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if(el.getAttribute('href') === '#') e.preventDefault();
+            });
+        });
+
+        // Search Bar focus effect
+        const searchInput = document.querySelector('input[type="text"]');
+        if(searchInput) {
+            searchInput.addEventListener('focus', () => {
+                searchInput.parentElement.classList.add('ring-2', 'ring-primary/10', 'border-primary/50');
+            });
+            searchInput.addEventListener('blur', () => {
+                searchInput.parentElement.classList.remove('ring-2', 'ring-primary/10', 'border-primary/50');
+            });
+        }
+
+        function renderMarketplace() {
+            if (!window.GMState) return;
+            const posts = window.GMState.getPosts();
+            const approvedPosts = posts.filter(p => p.status === 'approved');
+            const grid = document.getElementById('listings-grid');
+
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            if (approvedPosts.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-xxl flex flex-col items-center justify-center text-center">
+                        <span class="material-symbols-outlined text-[64px] text-outline mb-md">storefront</span>
+                        <h3 class="text-headline-md font-bold text-primary mb-xs">No Listings Available</h3>
+                        <p class="text-body-md text-on-surface-variant max-w-sm">Approved posts from Facebook groups will appear here in real-time.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            approvedPosts.forEach(post => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl border border-outline-variant/30 shadow-sm hover:shadow-lg transition-all duration-300 group';
+                card.innerHTML = `
+                    <div class="relative h-56 overflow-hidden rounded-t-xl bg-surface-container-low">
+                        <img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="${post.image}" alt="${post.title}"/>
+                        <div class="absolute top-md right-md">
+                            <button class="bg-white/90 backdrop-blur-md p-xs rounded-full shadow-sm hover:text-error transition-colors">
+                                <span class="material-symbols-outlined">favorite</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-lg flex flex-col justify-between h-[200px]">
+                        <div>
+                            <div class="flex justify-between items-start mb-base gap-xs">
+                                <h4 class="font-headline-sm text-headline-sm group-hover:text-primary transition-colors truncate flex-1" title="${post.title}">${post.title}</h4>
+                                <span class="text-secondary font-bold text-headline-sm shrink-0">$${post.price.toLocaleString()}</span>
+                            </div>
+                            <p class="text-on-surface-variant text-body-sm mb-md">${post.date} • ${post.category} • ${post.sourceGroup}</p>
+                        </div>
+                        <a href="/listing-detail.html?id=${post.id}" class="w-full py-md border border-primary text-primary rounded-lg font-label-md hover:bg-primary hover:text-on-primary transition-all duration-200 flex items-center justify-center mt-auto">View Listing</a>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Listen for storage updates
+        window.addEventListener('storage-update', renderMarketplace);
+
+        // Initial render
+        renderMarketplace();
+    </script>
+</body></html>

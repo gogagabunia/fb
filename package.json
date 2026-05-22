@@ -1,0 +1,31 @@
+{
+  "name": "groupmarket-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:generate": "yarn workspace database prisma generate",
+    "db:migrate": "yarn workspace database prisma db push",
+    "test:ingest": "ts-node scripts/test-ingestion.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "ts-node": "^10.9.2",
+    "turbo": "^1.10.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.22",
+    "openai": "^6.38.0",
+    "playwright": "^1.60.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  }
+}

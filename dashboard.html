@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GroupMarket | Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); }
+    </style>
+    <script src="/assets/js/shared-state.js"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-container": "#00714d",
+                      "surface-tint": "#4f6073",
+                      "background": "#f8f9fa",
+                      "surface-container-highest": "#e1e3e4",
+                      "on-tertiary-container": "#8292aa",
+                      "primary": "#041627",
+                      "on-secondary": "#ffffff",
+                      "surface-container-high": "#e7e8e9",
+                      "tertiary-fixed": "#d3e4fe",
+                      "on-error-container": "#93000a",
+                      "surface-container-low": "#f3f4f5",
+                      "on-primary-fixed-variant": "#38485a",
+                      "tertiary-container": "#1b2b3f",
+                      "surface-container-lowest": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed": "#002113",
+                      "outline-variant": "#c4c6cd",
+                      "primary-container": "#1a2b3c",
+                      "secondary-container": "#6cf8bb",
+                      "primary-fixed-dim": "#b7c8de",
+                      "surface": "#f8f9fa",
+                      "on-surface": "#191c1d",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "on-surface-variant": "#44474c",
+                      "on-primary-container": "#8192a7",
+                      "on-error": "#ffffff",
+                      "inverse-primary": "#b7c8de",
+                      "outline": "#74777d",
+                      "secondary": "#006c49",
+                      "on-secondary-fixed-variant": "#005236",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed": "#0b1d2d",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "secondary-fixed": "#6ffbbe",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "surface-dim": "#d9dadb",
+                      "surface-variant": "#e1e3e4",
+                      "inverse-on-surface": "#f0f1f2",
+                      "on-background": "#191c1d",
+                      "surface-bright": "#f8f9fa",
+                      "tertiary": "#051629",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "secondary-fixed-dim": "#4edea3",
+                      "primary-fixed": "#d2e4fb",
+                      "inverse-surface": "#2e3132",
+                      "surface-container": "#edeeef"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "base": "4px",
+                      "gutter": "24px",
+                      "sm": "12px",
+                      "lg": "24px",
+                      "xs": "8px",
+                      "xl": "32px",
+                      "xxl": "48px",
+                      "md": "16px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": ["Inter"], "headline-lg": ["Inter"], "display-lg": ["Inter"], "body-md": ["Inter"], "body-lg": ["Inter"], "label-md": ["Inter"], "label-sm": ["Inter"], "headline-sm": ["Inter"], "body-sm": ["Inter"], "headline-md": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Sidebar Navigation -->
+<aside class="h-screen w-64 fixed left-0 top-0 overflow-y-auto bg-surface border-r border-outline-variant/30 flex flex-col p-md gap-xs z-40 hidden md:flex">
+<div class="mb-xl px-xs">
+<h1 class="text-headline-sm font-headline-sm font-bold text-primary">GroupMarket</h1>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Seller Portal</p>
+</div>
+<nav class="flex-grow flex flex-col gap-xs">
+<a class="bg-secondary-container text-on-secondary-container font-semibold rounded-lg flex items-center gap-md p-md translate-x-1 transition-transform duration-200" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg flex items-center gap-md p-md transition-all" href="/imported-posts.html">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+<span class="text-label-md font-label-md">My Listings</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg flex items-center gap-md p-md transition-all" href="/add-group.html">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="text-label-md font-label-md">Connected Groups</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg flex items-center gap-md p-md transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+<span class="text-label-md font-label-md">Messages</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg flex items-center gap-md p-md transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-label-md font-label-md">Analytics</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-xs border-t border-outline-variant/30 pt-md">
+<button class="bg-primary text-on-primary w-full py-md px-lg rounded-xl font-semibold mb-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
+                Sync New Posts
+            </button>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg flex items-center gap-md p-md transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg flex items-center gap-md p-md transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-label-md font-label-md">Help</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 min-h-screen p-lg md:p-xxl">
+<header class="flex justify-between items-start mb-xxl">
+<div>
+<h2 class="text-headline-lg font-headline-lg text-primary">Overview</h2>
+<p class="text-body-lg font-body-lg text-on-surface-variant">Welcome back, manage your group marketplace activity.</p>
+</div>
+<button onclick="window.location.href='/add-group.html'" class="bg-secondary text-on-secondary px-xl py-md rounded-xl font-bold flex items-center gap-sm shadow-md hover:shadow-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                Add New Facebook Group
+            </button>
+</header>
+<!-- Stats Grid -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-lg mb-xxl">
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col">
+<span class="text-on-surface-variant text-label-md font-label-md mb-base">Total Groups Connected</span>
+<div class="flex items-center justify-between">
+<span class="text-display-lg font-display-lg text-primary" id="total-groups-count">12</span>
+<span class="bg-secondary-container text-on-secondary-container px-sm py-xs rounded-full text-label-sm font-label-sm">+2 this month</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col">
+<span class="text-on-surface-variant text-label-md font-label-md mb-base">Posts Pending Approval</span>
+<div class="flex items-center justify-between">
+<span class="text-display-lg font-display-lg text-primary" id="pending-posts-count">08</span>
+<span class="bg-error-container text-on-error-container px-sm py-xs rounded-full text-label-sm font-label-sm">Needs review</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col">
+<span class="text-on-surface-variant text-label-md font-label-md mb-base">Recent Approved Listings</span>
+<div class="flex items-center justify-between">
+<span class="text-display-lg font-display-lg text-primary" id="approved-listings-count">45</span>
+<span class="bg-surface-container-high text-on-surface-variant px-sm py-xs rounded-full text-label-sm font-label-sm">Active Now</span>
+</div>
+</div>
+</section>
+<!-- Empty State / Recent Activity Hybrid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+<!-- Main Content Area: Empty State / Welcome -->
+<section class="lg:col-span-8 bg-surface-container-lowest border border-outline-variant/30 rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<div class="p-xl border-b border-outline-variant/30 flex justify-between items-center">
+<h3 class="text-headline-sm font-headline-sm text-primary">Your Marketplace Feed</h3>
+<div class="flex gap-sm">
+<button class="p-xs text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="filter_list">filter_list</span></button>
+<button class="p-xs text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="more_vert">more_vert</span></button>
+</div>
+</div>
+<div class="flex flex-col items-center justify-center p-xxl text-center min-h-[400px]">
+<div class="w-24 h-24 bg-surface-container-low rounded-full flex items-center justify-center mb-xl">
+<span class="material-symbols-outlined text-[48px] text-on-secondary-container" data-icon="facebook">social_leaderboard</span>
+</div>
+<h4 class="text-headline-md font-headline-md text-primary mb-sm">Connect your first group</h4>
+<p class="text-body-md font-body-md text-on-surface-variant max-w-md mx-auto mb-xl">
+                        Start syncing listings by connecting your first Facebook group. We'll help you organize, manage approvals, and track performance across all your communities.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-md">
+<button class="bg-secondary text-on-secondary px-xl py-md rounded-xl font-bold flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined" data-icon="link">link</span>
+                            Connect Facebook Account
+                        </button>
+<button class="bg-surface-container-low text-primary px-xl py-md rounded-xl font-bold border border-outline-variant/30">
+                            Watch Tutorial
+                        </button>
+</div>
+</div>
+</section>
+<!-- Secondary Content: Recent Activity / Groups -->
+<section class="lg:col-span-4 flex flex-col gap-lg">
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<h3 class="text-label-md font-label-md text-on-tertiary-container uppercase tracking-wider mb-lg">Recent Group Updates</h3>
+<div class="space-y-md" id="groups-container">
+<!-- Dynamic group entries will be rendered here -->
+</div>
+</div>
+<div class="bg-primary text-on-primary p-xl rounded-xl shadow-lg relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="text-headline-sm font-headline-sm mb-sm">Pro Subscription</h3>
+<p class="text-body-sm font-body-sm text-on-primary-container mb-lg">Unlock unlimited group connections and automated post scheduling.</p>
+<button class="bg-on-primary text-primary px-lg py-sm rounded-lg text-label-md font-label-md font-bold hover:scale-[1.02] transition-transform">
+                            Upgrade Now
+                        </button>
+</div>
+<!-- Abstract Background Pattern -->
+<div class="absolute -right-8 -bottom-8 w-32 h-32 bg-secondary opacity-20 rounded-full blur-2xl"></div>
+</div>
+</section>
+</div>
+</main>
+<!-- Mobile Navigation -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface/95 backdrop-blur-lg border-t border-outline-variant/20 shadow-lg h-16 flex justify-around items-center pb-safe px-md">
+<a class="flex flex-col items-center justify-center text-secondary font-bold scale-90 transition-transform duration-200" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="text-label-sm font-label-sm-mobile">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="text-label-sm font-label-sm-mobile">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="text-label-sm font-label-sm-mobile">Groups</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="person_outline">person_outline</span>
+<span class="text-label-sm font-label-sm-mobile">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.98)';
+            });
+            button.addEventListener('mouseup', () => {
+                button.style.transform = 'scale(1)';
+            });
+        });
+
+        function updateDashboard() {
+            if (!window.GMState) return;
+
+            const groups = window.GMState.getGroups();
+            const posts = window.GMState.getPosts();
+
+            // 1. Update stats
+            const totalGroups = groups.length;
+            const userPosts = posts.filter(p => p.type === 'user');
+            const pendingPosts = userPosts.filter(p => p.status === 'pending').length;
+            const approvedPosts = userPosts.filter(p => p.status === 'approved').length;
+
+            document.getElementById('total-groups-count').textContent = totalGroups;
+            document.getElementById('pending-posts-count').textContent = String(pendingPosts).padStart(2, '0');
+            document.getElementById('approved-listings-count').textContent = String(approvedPosts).padStart(2, '0');
+
+            // 2. Render groups
+            const groupsContainer = document.getElementById('groups-container');
+            if (groupsContainer) {
+                groupsContainer.innerHTML = '';
+                
+                if (groups.length === 0) {
+                    groupsContainer.innerHTML = `<p class="text-body-sm text-on-surface-variant/60 italic text-center py-md">No groups connected yet.</p>`;
+                    return;
+                }
+
+                groups.forEach(group => {
+                    const colorMap = {
+                        success: { bg: 'bg-secondary-container/20', text: 'text-secondary' },
+                        info: { bg: 'bg-primary-container/10', text: 'text-primary' },
+                        warning: { bg: 'bg-error-container/20', text: 'text-error' }
+                    };
+                    
+                    const theme = colorMap[group.type] || colorMap.info;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-md group cursor-pointer p-xs hover:bg-surface-container-low rounded-lg transition-colors';
+                    div.innerHTML = `
+                        <div class="w-10 h-10 ${theme.bg} rounded-lg flex items-center justify-center ${theme.text}">
+                            <span class="material-symbols-outlined">${group.icon || 'groups'}</span>
+                        </div>
+                        <div class="flex-grow">
+                            <p class="text-body-sm font-body-sm font-semibold text-primary group-hover:text-secondary transition-colors">${group.name}</p>
+                            <p class="text-label-sm font-label-sm text-on-surface-variant">${group.time}</p>
+                        </div>
+                    `;
+                    groupsContainer.appendChild(div);
+                });
+            }
+        }
+
+        // Listen for cross-page storage updates
+        window.addEventListener('storage-update', updateDashboard);
+
+        // Initial render
+        updateDashboard();
+    </script>
+</body></html>

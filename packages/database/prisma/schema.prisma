@@ -1,0 +1,131 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ScrapingStatus {
+  SUCCESS
+  FAILED
+  RUNNING
+}
+
+model User {
+  id             String           @id @default(uuid())
+  clerkId        String           @unique
+  email          String           @unique
+  firstName      String?
+  lastName       String?
+  imageUrl       String?
+  role           Role             @default(USER)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  groups         FacebookGroup[]
+  importedPosts  ImportedPost[]
+}
+
+model FacebookGroup {
+  id             String           @id @default(uuid())
+  groupId        String           @unique // Facebook's unique Group ID
+  name           String
+  url            String
+  isPublic       Boolean          @default(true)
+  isActive       Boolean          @default(true)
+  keywords       String[]         // List of custom brand/product keywords to flag
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  importedPosts  ImportedPost[]
+  scrapingLogs   ScrapingLog[]
+}
+
+model ImportedPost {
+  id             String           @id @default(uuid())
+  fbPostId       String           @unique // Original FB post link or ID
+  rawText        String           @db.Text
+  images         String[]         // Scraped image attachment URLs
+  authorName     String
+  authorProfile  String?          // Link to author's FB profile
+  priceScraped   Float?
+  currency       String           @default("USD")
+  status         PostStatus       @default(PENDING)
+  rejectionReason String?
+  scrapedAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  
+  // Scraped Metadata Relations
+  groupId        String
+  group          FacebookGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Listing correlation once approved
+  listing        Listing?
+}
+
+model Listing {
+  id             String           @id @default(uuid())
+  title          String
+  price          Float
+  description    String           @db.Text
+  images         String[]
+  location       String?
+  category       String
+  specs          Json             // Key-value attributes parsed by AI (e.g. make, model, year, mileage)
+  originalPostUrl String
+  contactUrl     String
+  isActive       Boolean          @default(true)
+  viewsCount     Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Connections
+  importedPostId String           @unique
+  importedPost   ImportedPost     @relation(fields: [importedPostId], references: [id], onDelete: Cascade)
+
+  categoryId     String
+  categoryRel    Category         @relation(fields: [categoryId], references: [id])
+  tags           Tag[]            @relation("ListingTags")
+}
+
+model Category {
+  id             String           @id @default(uuid())
+  name           String           @unique
+  slug           String           @unique
+  listings       Listing[]
+}
+
+model Tag {
+  id             String           @id @default(uuid())
+  name           String           @unique
+  listings       Listing[]        @relation("ListingTags")
+}
+
+model ScrapingLog {
+  id             String           @id @default(uuid())
+  status         ScrapingStatus
+  postsScraped   Int              @default(0)
+  postsImported  Int              @default(0)
+  errorMessage   String?          @db.Text
+  startedAt      DateTime         @default(now())
+  completedAt    DateTime?
+  
+  groupId        String
+  group          FacebookGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}

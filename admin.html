@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GroupMarket Admin | Approval Queue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#00714d",
+                    "surface-tint": "#4f6073",
+                    "background": "#f8f9fa",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-tertiary-container": "#8292aa",
+                    "primary": "#041627",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e7e8e9",
+                    "tertiary-fixed": "#d3e4fe",
+                    "on-error-container": "#93000a",
+                    "surface-container-low": "#f3f4f5",
+                    "on-primary-fixed-variant": "#38485a",
+                    "tertiary-container": "#1b2b3f",
+                    "surface-container-lowest": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed": "#002113",
+                    "outline-variant": "#c4c6cd",
+                    "primary-container": "#1a2b3c",
+                    "secondary-container": "#6cf8bb",
+                    "primary-fixed-dim": "#b7c8de",
+                    "surface": "#f8f9fa",
+                    "on-surface": "#191c1d",
+                    "tertiary-fixed-dim": "#b7c8e1",
+                    "on-surface-variant": "#44474c",
+                    "on-primary-container": "#8192a7",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#b7c8de",
+                    "outline": "#74777d",
+                    "secondary": "#006c49",
+                    "on-secondary-fixed-variant": "#005236",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed": "#0b1d2d",
+                    "on-tertiary-fixed-variant": "#38485d",
+                    "secondary-fixed": "#6ffbbe",
+                    "on-tertiary-fixed": "#0b1c30",
+                    "surface-dim": "#d9dadb",
+                    "surface-variant": "#e1e3e4",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-background": "#191c1d",
+                    "surface-bright": "#f8f9fa",
+                    "tertiary": "#051629",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed-dim": "#4edea3",
+                    "primary-fixed": "#d2e4fb",
+                    "inverse-surface": "#2e3132",
+                    "surface-container": "#edeeef"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-max": "1280px",
+                    "base": "4px",
+                    "gutter": "24px",
+                    "sm": "12px",
+                    "lg": "24px",
+                    "xs": "8px",
+                    "xl": "32px",
+                    "xxl": "48px",
+                    "md": "16px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .table-row-hover:hover {
+            background-color: rgba(243, 244, 245, 0.6);
+        }
+    </style>
+    <script src="/assets/js/shared-state.js"></script>
+</head>
+<body class="bg-background text-on-surface min-h-screen">
+<!-- SideNavBar (Authority Source: JSON) -->
+<aside class="h-screen w-64 fixed left-0 top-0 overflow-y-auto bg-surface border-r border-outline-variant/30 flex flex-col p-md gap-xs z-40">
+<div class="mb-xl px-xs">
+<h1 class="text-headline-sm font-headline-sm font-bold text-primary">GroupMarket</h1>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Seller Portal</p>
+</div>
+<nav class="flex-1 flex flex-col gap-xs">
+<!-- Active State Determination: Dashboard / Admin Flow -->
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container font-semibold rounded-lg translate-x-1 transition-transform duration-200" href="/dashboard.html">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined">storefront</span>
+<span class="text-label-md font-label-md">My Listings</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined">groups</span>
+<span class="text-label-md font-label-md">Connected Groups</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined">mail</span>
+<span class="text-label-md font-label-md">Messages</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-label-md font-label-md">Analytics</span>
+</a>
+</nav>
+<button id="sync-admin-btn" onclick="syncAdminPosts()" class="mt-lg mb-md w-full py-sm bg-primary text-on-primary rounded-lg text-label-md font-label-md shadow-sm active:scale-[0.98] transition-all">
+            Sync New Posts
+        </button>
+<div class="mt-auto border-t border-outline-variant/30 pt-md flex flex-col gap-xs">
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all" href="/dashboard.html">
+<span class="material-symbols-outlined">help</span>
+<span class="text-label-md font-label-md">Help</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-xl max-w-container-max">
+<!-- Header Section -->
+<header class="flex justify-between items-end mb-xxl">
+<div>
+<h2 class="text-display-lg font-display-lg text-primary">Approval Queue</h2>
+<p class="text-body-lg font-body-lg text-on-surface-variant mt-xs">Review and moderate incoming marketplace posts.</p>
+</div>
+<div class="flex gap-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-xl pr-md py-sm bg-surface-container-lowest border border-outline-variant rounded-lg text-body-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all w-64" placeholder="Search posts..." type="text"/>
+</div>
+<button class="flex items-center gap-xs px-md py-sm bg-surface-container-high text-primary rounded-lg text-label-md font-label-md hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                    Filters
+                </button>
+</div>
+</header>
+<div class="grid grid-cols-12 gap-xl">
+<!-- Table View: Approval Queue (Left Column) -->
+<div class="col-span-9 space-y-md">
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant/30">
+<th class="px-lg py-md text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Item Details</th>
+<th class="px-lg py-md text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Source Group</th>
+<th class="px-lg py-md text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Date Imported</th>
+<th class="px-lg py-md text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody id="queue-tbody" class="divide-y divide-outline-variant/20">
+<!-- Dynamic rows will be inserted here -->
+</tbody>
+</table>
+<!-- Pagination / Footer -->
+<div class="px-lg py-md bg-surface-container-low flex justify-between items-center border-t border-outline-variant/30">
+<span id="entries-count-text" class="text-label-sm text-on-surface-variant">Showing 0 entries</span>
+<div class="flex gap-xs">
+<button class="px-md py-xs border border-outline-variant rounded-lg text-label-md hover:bg-surface-container-high transition-all">Previous</button>
+<button class="px-md py-xs bg-primary text-on-primary rounded-lg text-label-md shadow-sm active:scale-95 transition-all">Next</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Stats Sidebar (Right Column) -->
+<aside class="col-span-3 space-y-lg">
+<!-- Stats Section -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-lg shadow-sm">
+<h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider mb-lg">Platform Overview</h3>
+<div class="space-y-xl">
+<div class="flex flex-col">
+<span class="text-display-lg text-primary font-bold" id="pending-posts-count">24</span>
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">pending_actions</span>
+<span class="text-label-md font-label-md">Pending Posts</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-headline-lg text-primary font-bold">12.8k</span>
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">person</span>
+<span class="text-label-md font-label-md">Total Users</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-headline-lg text-primary font-bold">482</span>
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">account_tree</span>
+<span class="text-label-md font-label-md">Active Groups</span>
+</div>
+</div>
+<div class="flex flex-col">
+<div class="flex items-end gap-xs">
+<span class="text-headline-lg text-primary font-bold">156</span>
+<span class="text-on-secondary-container text-label-sm mb-xs font-bold">+12%</span>
+</div>
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span class="text-label-md font-label-md">Daily Imports</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Tips / Guidelines Card -->
+<div class="bg-primary-container text-on-primary-container rounded-xl p-lg border border-outline-variant/10 shadow-sm">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-on-primary-fixed-variant">info</span>
+<h4 class="text-label-md font-bold">Review Guidelines</h4>
+</div>
+<ul class="text-body-sm space-y-sm text-on-primary-container/80">
+<li class="flex gap-xs">
+<span class="text-on-secondary-container font-bold">•</span>
+                            Verify images aren't screenshots
+                        </li>
+<li class="flex gap-xs">
+<span class="text-on-secondary-container font-bold">•</span>
+                            Check for prohibited items
+                        </li>
+<li class="flex gap-xs">
+<span class="text-on-secondary-container font-bold">•</span>
+                            Ensure description matches title
+                        </li>
+</ul>
+</div>
+</aside>
+</div>
+</main>
+<!-- Rejection Modal -->
+<div id="rejection-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50 transition-opacity duration-300">
+    <div class="bg-surface-container-lowest rounded-xl p-lg max-w-md w-full border border-outline-variant/30 shadow-lg transform scale-95 transition-transform duration-300">
+        <div class="flex justify-between items-center mb-md">
+            <h3 class="text-headline-sm font-bold text-primary">Reject Listing</h3>
+            <button onclick="closeRejectionModal()" class="p-xs text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <p class="text-body-sm text-on-surface-variant mb-md">Please provide a reason for rejecting this listing. This will be shown to the user.</p>
+        <textarea id="rejection-reason-input" class="w-full p-md bg-surface-container-low border border-outline-variant rounded-lg text-body-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all mb-lg" rows="4" placeholder="e.g. Missing vehicle mileage details or clear title validation..."></textarea>
+        <div class="flex justify-end gap-sm">
+            <button onclick="closeRejectionModal()" class="px-md py-sm text-on-surface-variant hover:bg-surface-container-low rounded-lg font-label-md transition-all">Cancel</button>
+            <button onclick="submitRejection()" class="px-md py-sm bg-error text-on-error hover:bg-error/90 rounded-lg font-label-md shadow-sm active:scale-95 transition-all">Reject Listing</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="edit-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50 transition-opacity duration-300">
+    <div class="bg-surface-container-lowest rounded-xl p-lg max-w-lg w-full border border-outline-variant/30 shadow-lg transform scale-95 transition-transform duration-300">
+        <div class="flex justify-between items-center mb-md">
+            <h3 class="text-headline-sm font-bold text-primary">Edit Listing Details</h3>
+            <button onclick="closeEditModal()" class="p-xs text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="space-y-md mb-lg">
+            <div>
+                <label class="block text-label-sm font-bold text-on-surface-variant mb-xs">Item Title</label>
+                <input id="edit-title" type="text" class="w-full p-sm bg-surface-container-low border border-outline-variant rounded-lg text-body-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all" />
+            </div>
+            <div class="grid grid-cols-2 gap-md">
+                <div>
+                    <label class="block text-label-sm font-bold text-on-surface-variant mb-xs">Category</label>
+                    <input id="edit-category" type="text" class="w-full p-sm bg-surface-container-low border border-outline-variant rounded-lg text-body-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all" />
+                </div>
+                <div>
+                    <label class="block text-label-sm font-bold text-on-surface-variant mb-xs">Price ($)</label>
+                    <input id="edit-price" type="number" class="w-full p-sm bg-surface-container-low border border-outline-variant rounded-lg text-body-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all" />
+                </div>
+            </div>
+            <div>
+                <label class="block text-label-sm font-bold text-on-surface-variant mb-xs">Description</label>
+                <textarea id="edit-description" rows="3" class="w-full p-sm bg-surface-container-low border border-outline-variant rounded-lg text-body-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all"></textarea>
+            </div>
+        </div>
+        <div class="flex justify-end gap-sm">
+            <button onclick="closeEditModal()" class="px-md py-sm text-on-surface-variant hover:bg-surface-container-low rounded-lg font-label-md transition-all">Cancel</button>
+            <button onclick="saveEdit()" class="px-md py-sm bg-primary text-on-primary hover:bg-primary/90 rounded-lg font-label-md shadow-sm active:scale-95 transition-all">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Micro-interaction Scripts -->
+<script>
+    let activePostId = null;
+    let currentSyncIndex = 0;
+    
+    const EXTRA_MOCK_POSTS = [
+      {
+        id: "scraped-post-1",
+        title: "2015 Mazda 3 Hatchback",
+        price: 9800,
+        category: "Vehicles",
+        sourceGroup: "Cars For Sale NYC",
+        status: "pending_review",
+        date: "Just now",
+        description: "Great fuel economy, clean title, 85k miles. Selling because I upgraded.",
+        image: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=500",
+        type: "admin"
+      },
+      {
+        id: "scraped-post-2",
+        title: "AOC 24G2 Gaming Monitor 144Hz",
+        price: 130,
+        category: "Electronics",
+        sourceGroup: "NYC Tech Resale",
+        status: "pending_review",
+        date: "Just now",
+        description: "No dead pixels, comes with HDMI and power cable. IPS panel with great colors. Pick up in Queens.",
+        image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500",
+        type: "admin"
+      },
+      {
+        id: "scraped-post-3",
+        title: "iPhone 13 Pro - 128GB - Unlocked",
+        price: 520,
+        category: "Electronics",
+        sourceGroup: "NYC Tech Resale",
+        status: "pending_review",
+        date: "Just now",
+        description: "Battery health 88%. Graphite color, small scratch on bezel but screens are perfect.",
+        image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500",
+        type: "admin"
+      }
+    ];
+
+    function showToast(message, type = 'success') {
+      let container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed bottom-lg right-lg flex flex-col gap-sm z-50';
+        document.body.appendChild(container);
+      }
+
+      const toast = document.createElement('div');
+      const icon = type === 'success' ? 'check_circle' : type === 'error' ? 'cancel' : 'info';
+      const colorClass = type === 'success' ? 'bg-secondary text-on-secondary' : type === 'error' ? 'bg-error text-on-error' : 'bg-primary text-on-primary';
+      
+      toast.className = `${colorClass} px-md py-sm rounded-lg shadow-lg flex items-center gap-sm transform translate-y-lg opacity-0 transition-all duration-300`;
+      toast.innerHTML = `
+        <span class="material-symbols-outlined">${icon}</span>
+        <span class="text-label-md font-medium">${message}</span>
+      `;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-lg', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-lg', 'opacity-0');
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 3000);
+    }
+
+    function updateStats() {
+      if (!window.GMState) return;
+      const posts = window.GMState.getPosts();
+      const pendingCount = posts.filter(p => p.status === 'pending_review').length;
+      document.getElementById('pending-posts-count').textContent = pendingCount;
+    }
+
+    function renderQueue() {
+      if (!window.GMState) return;
+      const posts = window.GMState.getPosts();
+      const pendingPosts = posts.filter(p => p.status === 'pending_review');
+      const tbody = document.getElementById('queue-tbody');
+      const countText = document.getElementById('entries-count-text');
+
+      tbody.innerHTML = '';
+      countText.textContent = `Showing ${pendingPosts.length} entries`;
+
+      if (pendingPosts.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="px-lg py-xl text-center text-on-surface-variant/60">
+              <div class="flex flex-col items-center gap-sm">
+                <span class="material-symbols-outlined text-[48px] text-outline">inbox</span>
+                <p class="text-body-md font-medium">All caught up!</p>
+                <p class="text-body-sm text-on-surface-variant/80">No incoming posts to review at the moment.</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      pendingPosts.forEach(post => {
+        const tr = document.createElement('tr');
+        tr.id = `row-${post.id}`;
+        tr.className = 'table-row-hover transition-all duration-200 border-b border-outline-variant/20';
+        tr.innerHTML = `
+          <td class="px-lg py-md align-top">
+            <div class="flex gap-md">
+              <img src="${post.image}" class="w-16 h-16 object-cover rounded-lg border border-outline-variant/30 shadow-sm" alt="" />
+              <div class="flex flex-col">
+                <span class="text-label-md font-bold text-primary">${post.title}</span>
+                <span class="text-body-sm text-on-surface-variant">${post.category} • <span class="font-semibold text-secondary">$${post.price}</span></span>
+                <p class="text-body-sm text-on-surface-variant/80 mt-xs max-w-md line-clamp-2">${post.description}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-lg py-md align-middle text-body-sm text-on-surface-variant font-medium">
+            ${post.sourceGroup}
+          </td>
+          <td class="px-lg py-md align-middle text-body-sm text-on-surface-variant/80">
+            ${post.date}
+          </td>
+          <td class="px-lg py-md align-middle text-right">
+            <div class="flex justify-end gap-xs">
+              <button onclick="editPost('${post.id}')" class="p-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all" title="Edit details">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button onclick="approvePost('${post.id}')" class="p-sm text-on-secondary-container hover:bg-secondary-container/50 rounded-lg transition-all" title="Approve">
+                <span class="material-symbols-outlined">check_circle</span>
+              </button>
+              <button onclick="rejectPost('${post.id}')" class="p-sm text-error hover:bg-error-container/50 rounded-lg transition-all" title="Reject">
+                <span class="material-symbols-outlined">cancel</span>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function approvePost(id) {
+      const row = document.getElementById(`row-${id}`);
+      if (row) {
+        row.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+      }
+      setTimeout(() => {
+        window.GMState.updatePostStatus(id, 'approved');
+        showToast('Listing approved and published to marketplace!', 'success');
+        renderQueue();
+        updateStats();
+      }, 400);
+    }
+
+    function rejectPost(id) {
+      activePostId = id;
+      const modal = document.getElementById('rejection-modal');
+      const inner = modal.querySelector('div');
+      document.getElementById('rejection-reason-input').value = '';
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.add('opacity-100');
+        inner.classList.remove('scale-95');
+        inner.classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeRejectionModal() {
+      const modal = document.getElementById('rejection-modal');
+      const inner = modal.querySelector('div');
+      modal.classList.remove('opacity-100');
+      inner.classList.remove('scale-100');
+      inner.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        activePostId = null;
+      }, 300);
+    }
+
+    function submitRejection() {
+      const reason = document.getElementById('rejection-reason-input').value.trim();
+      if (!reason) {
+        showToast('Please provide a rejection reason.', 'error');
+        return;
+      }
+      
+      const id = activePostId;
+      closeRejectionModal();
+      
+      const row = document.getElementById(`row-${id}`);
+      if (row) {
+        row.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+      }
+      
+      setTimeout(() => {
+        window.GMState.updatePostStatus(id, 'rejected', reason);
+        showToast('Listing rejected and feedback sent to seller.', 'info');
+        renderQueue();
+        updateStats();
+      }, 400);
+    }
+
+    function editPost(id) {
+      activePostId = id;
+      const posts = window.GMState.getPosts();
+      const post = posts.find(p => p.id === id);
+      if (!post) return;
+
+      document.getElementById('edit-title').value = post.title;
+      document.getElementById('edit-category').value = post.category;
+      document.getElementById('edit-price').value = post.price;
+      document.getElementById('edit-description').value = post.description;
+
+      const modal = document.getElementById('edit-modal');
+      const inner = modal.querySelector('div');
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.add('opacity-100');
+        inner.classList.remove('scale-95');
+        inner.classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeEditModal() {
+      const modal = document.getElementById('edit-modal');
+      const inner = modal.querySelector('div');
+      modal.classList.remove('opacity-100');
+      inner.classList.remove('scale-100');
+      inner.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        activePostId = null;
+      }, 300);
+    }
+
+    function saveEdit() {
+      const title = document.getElementById('edit-title').value.trim();
+      const category = document.getElementById('edit-category').value.trim();
+      const price = parseFloat(document.getElementById('edit-price').value);
+      const description = document.getElementById('edit-description').value.trim();
+
+      if (!title || !category || isNaN(price)) {
+        showToast('Please fill in all fields with valid data.', 'error');
+        return;
+      }
+
+      const posts = window.GMState.getPosts();
+      const postIndex = posts.findIndex(p => p.id === activePostId);
+      if (postIndex !== -1) {
+        posts[postIndex].title = title;
+        posts[postIndex].category = category;
+        posts[postIndex].price = price;
+        posts[postIndex].description = description;
+        window.GMState.savePosts(posts);
+        showToast('Listing details updated successfully!', 'success');
+      }
+
+      closeEditModal();
+      renderQueue();
+    }
+
+    function syncAdminPosts() {
+      const btn = document.getElementById('sync-admin-btn');
+      if (btn.disabled) return;
+      
+      btn.disabled = true;
+      btn.innerHTML = `<span class="inline-block animate-spin mr-xs">⌛</span> Scanning...`;
+      
+      setTimeout(() => {
+        if (currentSyncIndex >= EXTRA_MOCK_POSTS.length) {
+          showToast('All connected Facebook groups are synchronized.', 'info');
+          btn.disabled = false;
+          btn.innerHTML = 'Sync New Posts';
+          return;
+        }
+
+        const posts = window.GMState.getPosts();
+        const newPost = EXTRA_MOCK_POSTS[currentSyncIndex];
+        
+        if (!posts.some(p => p.id === newPost.id)) {
+          posts.unshift(newPost);
+          window.GMState.savePosts(posts);
+          currentSyncIndex++;
+          showToast(`Synced "${newPost.title}" from "${newPost.sourceGroup}"!`, 'success');
+        } else {
+          showToast('No new posts matching criteria found.', 'info');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = 'Sync New Posts';
+        renderQueue();
+        updateStats();
+      }, 1500);
+    }
+
+    // Hover scale for cards
+    const statsCards = document.querySelectorAll('.bg-surface-container-lowest');
+    statsCards.forEach(card => {
+        card.style.transition = 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-2px)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0)';
+        });
+    });
+
+    // Listen for cross-window updates
+    window.addEventListener('storage-update', () => {
+      renderQueue();
+      updateStats();
+    });
+
+    // Initial load
+    renderQueue();
+    updateStats();
+</script>
+</body></html>

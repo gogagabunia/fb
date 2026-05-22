@@ -1,0 +1,82 @@
+import type { Config } from 'tailwindcss';
+
+const config: Config = {
+  content: [
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        "on-secondary-container": "#00714d",
+        "surface-tint": "#4f6073",
+        "background": "#f8f9fa",
+        "surface-container-highest": "#e1e3e4",
+        "on-tertiary-container": "#8292aa",
+        "primary": "#041627",
+        "on-secondary": "#ffffff",
+        "surface-container-high": "#e7e8e9",
+        "tertiary-fixed": "#d3e4fe",
+        "on-error-container": "#93000a",
+        "surface-container-low": "#f3f4f5",
+        "on-primary-fixed-variant": "#38485a",
+        "tertiary-container": "#1b2b3f",
+        "surface-container-lowest": "#ffffff",
+        "error": "#ba1a1a",
+        "on-secondary-fixed": "#002113",
+        "outline-variant": "#c4c6cd",
+        "primary-container": "#1a2b3c",
+        "secondary-container": "#6cf8bb",
+        "primary-fixed-dim": "#b7c8de",
+        "surface": "#f8f9fa",
+        "on-surface": "#191c1d",
+        "tertiary-fixed-dim": "#b7c8e1",
+        "on-surface-variant": "#44474c",
+        "on-primary-container": "#8192a7",
+        "on-error": "#ffffff",
+        "inverse-primary": "#b7c8de",
+        "outline": "#74777d",
+        "secondary": "#006c49",
+        "on-secondary-fixed-variant": "#005236",
+        "error-container": "#ffdad6",
+        "on-primary-fixed": "#0b1d2d",
+        "on-tertiary-fixed-variant": "#38485d",
+        "secondary-fixed": "#6ffbbe",
+        "on-tertiary-fixed": "#0b1c30",
+        "surface-dim": "#d9dadb",
+        "surface-variant": "#e1e3e4",
+        "inverse-on-surface": "#f0f1f2",
+        "on-background": "#191c1d",
+        "surface-bright": "#f8f9fa",
+        "tertiary": "#051629",
+        "on-primary": "#ffffff",
+        "on-tertiary": "#ffffff",
+        "secondary-fixed-dim": "#4edea3",
+        "primary-fixed": "#d2e4fb",
+        "inverse-surface": "#2e3132",
+        "surface-container": "#edeeef"
+      },
+      borderRadius: {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      spacing: {
+        "container-max": "1280px",
+        "base": "4px",
+        "gutter": "24px",
+        "sm": "12px",
+        "lg": "24px",
+        "xs": "8px",
+        "xl": "32px",
+        "xxl": "48px",
+        "md": "16px"
+      },
+    },
+  },
+  plugins: [],
+};
+
+export default config;

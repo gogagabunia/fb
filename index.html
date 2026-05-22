@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GroupMarket | Premium Community Marketplaces</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Shared Components Logic: Custom CSS for specific weights and interactive states -->
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-nav-link {
+            border-bottom: 2px solid #041627;
+            padding-bottom: 4px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#00714d",
+                        "surface-tint": "#4f6073",
+                        "background": "#f8f9fa",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-tertiary-container": "#8292aa",
+                        "primary": "#041627",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f3f4f5",
+                        "on-primary-fixed-variant": "#38485a",
+                        "tertiary-container": "#1b2b3f",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#002113",
+                        "outline-variant": "#c4c6cd",
+                        "primary-container": "#1a2b3c",
+                        "secondary-container": "#6cf8bb",
+                        "primary-fixed-dim": "#b7c8de",
+                        "surface": "#f8f9fa",
+                        "on-surface": "#191c1d",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-surface-variant": "#44474c",
+                        "on-primary-container": "#8192a7",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#b7c8de",
+                        "outline": "#74777d",
+                        "secondary": "#006c49",
+                        "on-secondary-fixed-variant": "#005236",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#0b1d2d",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "surface-dim": "#d9dadb",
+                        "surface-variant": "#e1e3e4",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-background": "#191c1d",
+                        "surface-bright": "#f8f9fa",
+                        "tertiary": "#051629",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#4edea3",
+                        "primary-fixed": "#d2e4fb",
+                        "inverse-surface": "#2e3132",
+                        "surface-container": "#edeeef"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "base": "4px",
+                        "gutter": "24px",
+                        "sm": "12px",
+                        "lg": "24px",
+                        "xs": "8px",
+                        "xl": "32px",
+                        "xxl": "48px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background font-body-md text-on-surface selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Top Navigation Bar -->
+<header class="bg-surface/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/30 shadow-sm">
+<div class="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto h-20">
+<div class="flex items-center gap-xl">
+<a class="text-headline-md font-headline-md font-bold text-primary" href="/index.html">GroupMarket</a>
+<nav class="hidden md:flex items-center gap-lg">
+<a class="text-primary border-b-2 border-primary pb-1 font-label-md" href="/marketplace.html">Browse</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="#">How it Works</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="#">Groups</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all">favorite</button>
+<div class="h-8 w-px bg-outline-variant/30 mx-xs"></div>
+<a href="/dashboard.html" class="px-lg py-2.5 rounded-lg font-label-md text-primary hover:bg-surface-container-low transition-all flex items-center justify-center">Login</a>
+<a href="/dashboard.html" class="bg-primary text-on-primary px-lg py-2.5 rounded-lg font-label-md shadow-sm hover:scale-[0.98] transition-all flex items-center justify-center">Register</a>
+</div>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative pt-xxl pb-xxl overflow-hidden">
+<div class="max-w-container-max mx-auto px-lg grid lg:grid-cols-2 gap-xl items-center">
+<div class="z-10">
+<span class="inline-block px-md py-1 bg-secondary-container text-on-secondary-container rounded-full text-label-sm mb-md">New: Automatic AI Importing</span>
+<h1 class="text-display-lg font-display-lg text-primary mb-lg max-w-xl">
+                        Turn Facebook Group Posts into a <span class="text-secondary">Premium Marketplace</span>
+</h1>
+<p class="text-body-lg text-on-surface-variant mb-xl max-w-lg">
+                        Transform chaotic social media selling into a structured, searchable, and professional storefront. Automatically import listings while keeping total control.
+                    </p>
+<div class="flex flex-wrap gap-md">
+<a href="/dashboard.html" class="bg-secondary text-on-secondary px-xl py-lg rounded-xl font-headline-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-sm">
+                            Get Started
+                            <span class="material-symbols-outlined">arrow_forward</span>
+</a>
+<a href="/marketplace.html" class="px-xl py-lg border border-outline rounded-xl font-headline-sm text-primary hover:bg-surface-container-low transition-all flex items-center justify-center">
+                            View Demo
+                        </a>
+</div>
+<div class="mt-xl flex items-center gap-sm">
+<div class="flex -space-x-2">
+<img class="w-8 h-8 rounded-full border-2 border-white" data-alt="Close-up portrait of a diverse female professional smiling warmly, shot in natural daylight with a soft bokeh background. Her look is modern, approachable, and trustworthy, fitting a premium SaaS aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5ftX7rLox__moXd-rOEc15_8YuzjRoPN9SrHhna95fjpaZOGuKzw0Cdc772oXC7rogXo4IrpL9A_R9DVw4uvGpELyAmYfZoyyb8JPT-aEmiMBf0Q0miB058-UQ0qE7RXNB5_r629gyP17y2l05Cdz9nfsQ_xJmYWLDx5zUkL5Uq8pcSWONpo4b9XM3lzSmPE_dnBat8YEqAjaPCVueluqlf7W5AeUWuFf_fKpp2Rjng07ubuYJjhdDwyYQrYMUhrEDlZXP2lHyLU"/>
+<img class="w-8 h-8 rounded-full border-2 border-white" data-alt="A portrait of a young male entrepreneur with a clean-cut look, wearing a casual linen shirt. The lighting is high-key and bright, evoking a sense of clarity and success in a modern workspace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNU2zsLu5YHImHB5NJ76pGf1fDu3L8NmVa3YBaDzB5WqyBAD24C1eYGXbci5l1kJm_yu7-DJZZ5A0OQycFz-ThnyEgAz0pjLizhHy2DXKTbmMG4IkK76b7bgWmH_P6UnzhUiWh1FFdTYCoJIl0HShLVJpD0IZ6KbYaOsczD5nLfQjMbZBQOxnoS2GyzVgyCP5C9QkSwbKO9A1WGz156fcI-QPjSj9J0Ta3ThsMvMHa7_-PGwzFqa1Tkh1FfnUwZPyUGvlS0xGD_EM"/>
+<img class="w-8 h-8 rounded-full border-2 border-white" data-alt="A smiling middle-aged woman in a professional home office setting. The style is clean and minimalist with soft neutral tones, conveying community trust and professional marketplace standards." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCky65DdnLrnvPfbhtNYBIHgnFmzmSLldH8rM2xqCbyI4tTKf7wkaAxyLs7kH3cCbC9a-blJIuT9bV5aOUTI-sOauIcuXzeSYG0u5u4ORwHPjqFQxDmCeR73x5aQzSgytxYSYwKg8J99TfUUgcnE82j9GdOholAJr21ai-8HAZWTe26KlGBLKe37XKemnxk3fpBz5rldSi06HxJlXE0_n3KFBdgZEAsEJKZxg1Z1vsJICHnDZnh7J8yKewyJ9Dp7pN1hHH080nu55Y"/>
+</div>
+<p class="text-label-md text-on-surface-variant">Joined by 2,400+ Group Admins</p>
+</div>
+</div>
+<!-- Visual Mockup (Bento Style) -->
+<div class="relative lg:h-[600px] flex items-center justify-center">
+<div class="absolute inset-0 bg-primary/5 rounded-[48px] blur-3xl -rotate-6 scale-95"></div>
+<!-- Transformation UI -->
+<div class="relative w-full grid grid-cols-6 grid-rows-6 gap-sm max-w-xl">
+<!-- Messy FB Post -->
+<div class="col-span-3 row-span-3 glass-card p-md rounded-xl rotate-[-4deg] shadow-lg animate-float">
+<div class="flex items-center gap-sm mb-sm">
+<div class="w-8 h-8 bg-surface-container-highest rounded-full"></div>
+<div class="space-y-1">
+<div class="w-16 h-2 bg-surface-container-highest rounded"></div>
+<div class="w-12 h-2 bg-surface-container-highest rounded opacity-50"></div>
+</div>
+</div>
+<div class="space-y-2 mb-md">
+<div class="w-full h-2 bg-surface-container-highest rounded"></div>
+<div class="w-4/5 h-2 bg-surface-container-highest rounded"></div>
+</div>
+<img class="w-full h-24 object-cover rounded-lg" data-alt="A slightly blurry, casual photograph of a vintage camera sitting on a cluttered wooden table. The lighting is uneven, mimicking a typical amateur social media post, with warm shadows and a cozy, unpolished atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWAUtSnQk5KPFrBoMxJ4kO0orkzduYVwbJrXUofc5LMjDF5iBLoeae_ckDQwc-reMqkAD5GGjxNb_5W5DOCi_kncuIVBPLEAXYRpx26PxG96BfHwY2jGPpvWljh_3a-7ct5pSFOWtppZrKqJ80-FD-SGP1wzVh68cO0HLpbdY2ghD_ZR5remSLgJeFPZU50jbNbKJtpiyRGz0FxxjDrXgoSPKR2rdMXClC-ayKbsJzwMlpnF7wR0Bp48a0sXoZSU8K6BTPi4yjnXw"/>
+</div>
+<!-- Organized Card -->
+<div class="col-start-3 col-span-4 row-start-3 row-span-4 bg-white p-lg rounded-2xl shadow-2xl border border-outline-variant/30 z-20">
+<div class="flex justify-between items-start mb-md">
+<span class="bg-secondary/10 text-secondary px-sm py-1 rounded text-label-sm">Approved</span>
+<span class="text-headline-sm text-primary font-bold">$240.00</span>
+</div>
+<img class="w-full h-48 object-cover rounded-xl mb-md" data-alt="A professional studio product photograph of a vintage film camera against a seamless, minimalist white background. The lighting is crisp and soft, highlighting the metallic textures and premium build quality, reflecting a high-end marketplace aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4zAuem5qHlpdIoXbw8BafnR7enrB1yqVmogmJMv41GQKCqU-DnUILDthuGbWEJzR_CRFgaZFMccpkOHU_xadzq9UfAN_L-avtqgck0vyiSOge2N0MmKvNl96YH9UY5Durts8a9vEwZ3B_c-6FeomeR7jBWNKeaKGsTq1fmlcOFkFXveTeblY5l8ZDhOJYeneyL4h1lLq6ZHlOudFJ48gjDyYxJZwsuu8NFk-dlKPOq1Q1rbpx2FczWPQZS5HVe8TuawiqstP6JQE"/>
+<h3 class="font-bold text-headline-sm text-primary mb-1">Vintage Leica M3</h3>
+<div class="flex items-center gap-xs text-on-surface-variant text-label-md mb-md">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+                                San Francisco, CA
+                            </div>
+<button class="w-full py-md bg-primary text-on-primary rounded-lg font-bold">Contact Seller</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="py-xxl bg-white">
+<div class="max-w-container-max mx-auto px-lg text-center mb-xl">
+<h2 class="text-headline-lg font-headline-lg text-primary mb-md">Engineered for Communities</h2>
+<p class="text-body-lg text-on-surface-variant max-w-2xl mx-auto">Stop managing sales in comment threads. Our tools turn your group into a professional ecosystem.</p>
+</div>
+<div class="max-w-container-max mx-auto px-lg grid md:grid-cols-3 gap-lg">
+<!-- Feature 1 -->
+<div class="p-xl bg-surface-container-low rounded-3xl border border-outline-variant/30 group hover:bg-white hover:shadow-xl transition-all duration-300">
+<div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-xl shadow-sm group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-[32px]">sync</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-sm">Auto-Import</h3>
+<p class="text-body-md text-on-surface-variant">
+                        Our AI monitors your group 24/7. When a member posts an item, it's instantly drafted into your marketplace with categorized specs and clean images.
+                    </p>
+</div>
+<!-- Feature 2 -->
+<div class="p-xl bg-surface-container-low rounded-3xl border border-outline-variant/30 group hover:bg-white hover:shadow-xl transition-all duration-300">
+<div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-xl shadow-sm group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary text-[32px]">verified_user</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-sm">Admin Approval Queue</h3>
+<p class="text-body-md text-on-surface-variant">
+                        Maintain the highest quality. Every imported listing hits your queue first. Approve, edit, or reject with a single click before it goes live.
+                    </p>
+</div>
+<!-- Feature 3 -->
+<div class="p-xl bg-surface-container-low rounded-3xl border border-outline-variant/30 group hover:bg-white hover:shadow-xl transition-all duration-300">
+<div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-xl shadow-sm group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-[32px]">stay_current_portrait</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-sm">Mobile-Ready Feed</h3>
+<p class="text-body-md text-on-surface-variant">
+                        A silky-smooth mobile experience for your members. Lightning fast loading, intuitive filters, and instant messaging built for the modern phone.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Social Proof / Marketplace Preview -->
+<section class="py-xxl bg-background">
+<div class="max-w-container-max mx-auto px-lg">
+<div class="flex flex-col md:flex-row justify-between items-end gap-lg mb-xl">
+<div class="text-left">
+<h2 class="text-headline-lg font-headline-lg text-primary mb-sm">Trusted Marketplace Network</h2>
+<p class="text-body-md text-on-surface-variant">Browsing 14,000+ verified listings across our partner groups.</p>
+</div>
+<div class="flex gap-sm">
+<button class="w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center hover:bg-white transition-all"><span class="material-symbols-outlined">chevron_left</span></button>
+<button class="w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center hover:bg-white transition-all"><span class="material-symbols-outlined">chevron_right</span></button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
+<!-- Sample Card 1 -->
+<div class="bg-white rounded-2xl border border-outline-variant/30 overflow-hidden hover:shadow-lg transition-all">
+<div class="relative">
+<img class="w-full h-48 object-cover" data-alt="A minimalist, high-end desk setup with a mechanical keyboard and a matte black desk mat. The lighting is soft and architectural, creating a focused, professional workspace vibe in a bright, modern interior." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDleIWVgxIb5JCUo-frLeGWvPUj25WtLt29nAqh0SXn-jlKXClZf3pDi6pATTM2X2XYTaU90Oh-nlswZYl6u3U9jBVwpb1_ZAhIG9qO-sK4VUzFjxK1yjWzrela8sSXbzj1M3Rr5mrspEi-pMdG-FBejp9FCs1ZSQe5cRsDYP65Dz6XtvZxktsJa0KESN6jybE7fz0Tovq7ZoiwKZoj73S4aLaFNG7DLryoHpb_REXhzwGQHYI_dVlKH6V_PDTvTIDA6hNIWGotKqc"/>
+<span class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-sm py-1 rounded-lg text-label-sm font-bold">$120</span>
+</div>
+<div class="p-lg">
+<h4 class="font-bold text-primary mb-xs">Keychron Q1 Mechanical</h4>
+<p class="text-label-sm text-on-surface-variant mb-md">Mechanical Keyboard Enthusiasts Group</p>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-secondary-fixed"></div>
+<span class="text-label-sm text-on-surface">Alex Rivera</span>
+</div>
+</div>
+</div>
+<!-- Sample Card 2 -->
+<div class="bg-white rounded-2xl border border-outline-variant/30 overflow-hidden hover:shadow-lg transition-all">
+<div class="relative">
+<img class="w-full h-48 object-cover" data-alt="A pair of pristine, limited edition sneakers displayed on a textured stone surface. The photography uses sharp focus and clean, cool-toned lighting to emphasize the premium materials and exclusive design of the footwear." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9QxxRcbsv_4pt41rc3BcNdpuf9igzcPcXIIHaIrfVzMjV1EYyejgWdV7r_K1RaebUElf97JNktKKlAg24AdoXnFdwoW5G6NgO7gn3eC0zbdNNB0rx7BiZJ0dopsa3wIFRtrwSz47SMnRB_gGXL297RHoEsiJ5a7F2Coq4OTKs-hOLOpltAyJ31BZAZKAQV-4NU7rfCq71cVedJDKej_t7SZtJMNMji3C47rAgEsfq1S7CRgMXbSTPJKb8WNG4ChzjP7wN9t1Z5KQ"/>
+<span class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-sm py-1 rounded-lg text-label-sm font-bold">$450</span>
+</div>
+<div class="p-lg">
+<h4 class="font-bold text-primary mb-xs">Air Jordan 1 Retro Low</h4>
+<p class="text-label-sm text-on-surface-variant mb-md">Hypebeast Marketplace SF</p>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-primary-fixed"></div>
+<span class="text-label-sm text-on-surface">Jordan S.</span>
+</div>
+</div>
+</div>
+<!-- Sample Card 3 -->
+<div class="bg-white rounded-2xl border border-outline-variant/30 overflow-hidden hover:shadow-lg transition-all">
+<div class="relative">
+<img class="w-full h-48 object-cover" data-alt="A high-end ergonomic chair in a modern, light-filled office. The chair features grey mesh and polished aluminum details, photographed from a 45-degree angle with soft, diffuse shadows on a light grey concrete floor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEWwc3OVF-hMVwafyIgdFaxQQUpaL6SkcSGUZrSlFRMIX5vp7XFUvP2ZOQswT06xxHYfl91_jSKSfCbK1SY1jcy5e0P9-i_d7Hg2fOKjKAYhdcNiFMl_5OZxZBPV4dI49d6ZLDiSvstkZ8iodA1koP3_Kkf4qOFEDYXlQJxj-830G4kUWiGrfbY-EkjmCCbpbk0VGeUUSBqNoDqcC_FAO7c4tzeb4VqbT2L2II4vfaJkQH0J-kSnxTWCFOvRzKmx1Etps88oeXeRE"/>
+<span class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-sm py-1 rounded-lg text-label-sm font-bold">$890</span>
+</div>
+<div class="p-lg">
+<h4 class="font-bold text-primary mb-xs">Herman Miller Aeron B</h4>
+<p class="text-label-sm text-on-surface-variant mb-md">Office Liquidation Bay Area</p>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-secondary-fixed-dim"></div>
+<span class="text-label-sm text-on-surface">Sarah Chen</span>
+</div>
+</div>
+</div>
+<!-- Sample Card 4 -->
+<div class="bg-white rounded-2xl border border-outline-variant/30 overflow-hidden hover:shadow-lg transition-all">
+<div class="relative">
+<img class="w-full h-48 object-cover" data-alt="A professional-grade designer espresso machine in a modern kitchen. The chrome surfaces reflect soft morning light, and the overall composition is clean, balanced, and emphasizes premium domestic technology." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8OGLgNIeADhCTzMmSmc4dR6cTd9k1XjqJhHnh5CUS0oznrGtbT3pKW6eO7zh3UokWIR3SI3XNn4Icx-y7pUbg52e-2PcKiFLRpPgGUVHzH71ELupr52SyJPYLZ6UzS82pyMXkgcFbAAL3biy90gYH0khcBXbv9ocanGkficAlnF6TuIxbie7I4JeWaijMHQv-_HSxA7liGdb_h7fwhkiv1OaEjQDqNKdFtxoCyyC-jzPkhOzt9u5Dib6Pcrajk8LXT3XFx5gx9Oc"/>
+<span class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-sm py-1 rounded-lg text-label-sm font-bold">$1,200</span>
+</div>
+<div class="p-lg">
+<h4 class="font-bold text-primary mb-xs">Rocket Appartamento</h4>
+<p class="text-label-sm text-on-surface-variant mb-md">Espresso Aficionados Market</p>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-on-tertiary-container"></div>
+<span class="text-label-sm text-on-surface">Marcus T.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-xxl">
+<div class="max-w-container-max mx-auto px-lg">
+<div class="bg-primary rounded-[40px] p-xl md:p-xxl relative overflow-hidden text-center md:text-left">
+<div class="absolute top-0 right-0 w-1/2 h-full bg-secondary/10 blur-[100px] rounded-full"></div>
+<div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-xl">
+<div class="max-w-xl">
+<h2 class="text-display-lg font-display-lg text-on-primary mb-md">Ready to upgrade your group?</h2>
+<p class="text-body-lg text-on-primary-container">Join thousands of admins who have professionalized their community commerce in under 5 minutes.</p>
+</div>
+<a href="/add-group.html" class="bg-secondary-container text-on-secondary-container px-xl py-lg rounded-2xl font-headline-sm hover:scale-105 transition-all whitespace-nowrap flex items-center justify-center">
+                            Sync Your Group Now
+                        </a>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-primary text-on-primary-container pt-xxl pb-xl border-t border-primary-container">
+<div class="max-w-container-max mx-auto px-lg grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-xl mb-xxl">
+<div class="col-span-2">
+<a class="text-headline-md font-bold text-on-primary mb-lg inline-block" href="/index.html">GroupMarket</a>
+<p class="text-body-sm text-on-primary-container max-w-xs mb-lg">
+                    The bridge between social communities and professional commerce. We help you scale trust.
+                </p>
+<div class="flex gap-md">
+<a class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center hover:bg-secondary/20 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">public</span>
+</a>
+<a class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center hover:bg-secondary/20 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+</a>
+</div>
+</div>
+<div>
+<h5 class="text-on-primary font-bold mb-lg">Platform</h5>
+<ul class="space-y-md text-label-md">
+<li><a class="hover:text-on-primary transition-all" href="/marketplace.html">Browse</a></li>
+<li><a class="hover:text-on-primary transition-all" href="#">Sync Tech</a></li>
+<li><a class="hover:text-on-primary transition-all" href="#">Mobile App</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-on-primary font-bold mb-lg">Resources</h5>
+<ul class="space-y-md text-label-md">
+<li><a class="hover:text-on-primary transition-all" href="#">How it Works</a></li>
+<li><a class="hover:text-on-primary transition-all" href="#">Admin Guide</a></li>
+<li><a class="hover:text-on-primary transition-all" href="#">Success Stories</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-on-primary font-bold mb-lg">Company</h5>
+<ul class="space-y-md text-label-md">
+<li><a class="hover:text-on-primary transition-all" href="#">About Us</a></li>
+<li><a class="hover:text-on-primary transition-all" href="#">Careers</a></li>
+<li><a class="hover:text-on-primary transition-all" href="#">Contact</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-on-primary font-bold mb-lg">Legal</h5>
+<ul class="space-y-md text-label-md">
+<li><a class="hover:text-on-primary transition-all" href="#">Privacy</a></li>
+<li><a class="hover:text-on-primary transition-all" href="#">Terms</a></li>
+<li><a class="hover:text-on-primary transition-all" href="#">Cookie Policy</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-container-max mx-auto px-lg pt-xl border-t border-primary-container flex flex-col md:flex-row justify-between items-center gap-md">
+<p class="text-label-sm opacity-50">© 2024 GroupMarket Inc. All rights reserved.</p>
+<div class="flex items-center gap-lg">
+<span class="flex items-center gap-xs text-label-sm"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> All systems operational</span>
+</div>
+</div>
+</footer>
+<!-- Mobile Bottom Nav -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-surface/95 backdrop-blur-lg border-t border-outline-variant/20 shadow-lg flex justify-around items-center h-16 pb-safe">
+<a class="flex flex-col items-center justify-center text-secondary font-bold" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="text-label-sm">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="text-label-sm">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="text-label-sm">Groups</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">person_outline</span>
+<span class="text-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for floating effect
+        document.addEventListener('mousemove', (e) => {
+            const floaters = document.querySelectorAll('.animate-float');
+            const x = (e.clientX - window.innerWidth / 2) / 50;
+            const y = (e.clientY - window.innerHeight / 2) / 50;
+            
+            floaters.forEach(el => {
+                el.style.transform = `translate(${x}px, ${y}px) rotate(-4deg)`;
+            });
+        });
+    </script>
+</body></html>

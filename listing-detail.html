@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-effect {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#00714d",
+                        "surface-tint": "#4f6073",
+                        "background": "#f8f9fa",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-tertiary-container": "#8292aa",
+                        "primary": "#041627",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f3f4f5",
+                        "on-primary-fixed-variant": "#38485a",
+                        "tertiary-container": "#1b2b3f",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#002113",
+                        "outline-variant": "#c4c6cd",
+                        "primary-container": "#1a2b3c",
+                        "secondary-container": "#6cf8bb",
+                        "primary-fixed-dim": "#b7c8de",
+                        "surface": "#f8f9fa",
+                        "on-surface": "#191c1d",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-surface-variant": "#44474c",
+                        "on-primary-container": "#8192a7",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#b7c8de",
+                        "outline": "#74777d",
+                        "secondary": "#006c49",
+                        "on-secondary-fixed-variant": "#005236",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#0b1d2d",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "surface-dim": "#d9dadb",
+                        "surface-variant": "#e1e3e4",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-background": "#191c1d",
+                        "surface-bright": "#f8f9fa",
+                        "tertiary": "#051629",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#4edea3",
+                        "primary-fixed": "#d2e4fb",
+                        "inverse-surface": "#2e3132",
+                        "surface-container": "#edeeef"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "base": "4px",
+                        "gutter": "24px",
+                        "sm": "12px",
+                        "lg": "24px",
+                        "xs": "8px",
+                        "xl": "32px",
+                        "xxl": "48px",
+                        "md": "16px"
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface antialiased">
+<!-- TopNavBar -->
+<header class="bg-surface/80 dark:bg-surface/80 backdrop-blur-md text-primary dark:text-on-primary-fixed docked full-width top-0 sticky z-50 border-b border-outline-variant/30 shadow-sm">
+<div class="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto h-16">
+<div class="flex items-center gap-xl">
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-on-primary-fixed">GroupMarket</span>
+<nav class="hidden md:flex gap-lg items-center">
+<a class="text-primary dark:text-on-primary-fixed border-b-2 border-primary dark:border-on-primary-fixed pb-1 font-label-md text-label-md" href="/marketplace.html">Browse</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="/add-group.html">Groups</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="/dashboard.html">Categories</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden lg:flex items-center bg-surface-container-low px-md py-xs rounded-full border border-outline-variant/30">
+<span class="material-symbols-outlined text-on-surface-variant mr-xs">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-64" placeholder="Search marketplace..." type="text"/>
+</div>
+<button class="material-symbols-outlined p-xs hover:bg-surface-container-low rounded-full transition-all duration-200">favorite</button>
+<button class="material-symbols-outlined p-xs hover:bg-surface-container-low rounded-full transition-all duration-200">notifications</button>
+<button class="bg-primary text-on-primary px-lg py-xs rounded-lg font-label-md text-label-md hover:opacity-90 transition-all active:scale-[0.98]">List Item</button>
+<img alt="User profile" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of a friendly young man in a clean gallery setting. The image is bright with high-key lighting, matching a modern SaaS aesthetic with soft shadows and a neutral background palette of whites and light grays. His expression is approachable and confident." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI4MSc0UjHgiIuuO7TEPqi_eXGlbLQFvZgQCutSHSZJowa7iqM_ITxl4BWBHl9BIEpICBqHuEcRgE_08v4aLQfJWiTU9XYxChX4Lwoo8QkJovTDMzv5VyNb-mSRIA9hbvuURzIyGqJDfNTQ8KIfkGA1EOmNNkoEdwBIW8Lz_HCpiW8cZlfyYqwbX2bars6kmwJXm1fCkGW2-TGLHy6cc_flQU8_O0OVoLQjYS13AnhS1ZW0S2tIxBMN4yltxQRKj30EFdNq8WheuQ"/>
+</div>
+</div>
+</header>
+<main class="max-w-container-max mx-auto px-md md:px-lg py-xl">
+<!-- Breadcrumb & Action Row -->
+<div class="flex justify-between items-center mb-lg">
+<div class="flex items-center gap-xs text-on-surface-variant font-label-md text-label-md">
+<a class="hover:text-primary" href="/dashboard.html">Home</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<a class="hover:text-primary" href="/marketplace.html" id="breadcrumb-category">Vehicles</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-on-surface" id="breadcrumb-title">2022 Porsche 911 GT3</span>
+</div>
+<div class="flex gap-sm">
+<button class="flex items-center gap-xs px-md py-xs rounded-lg border border-outline-variant hover:bg-surface-container-low transition-all text-label-md font-label-md">
+<span class="material-symbols-outlined">share</span> Share
+                </button>
+<button class="flex items-center gap-xs px-md py-xs rounded-lg border border-outline-variant hover:bg-surface-container-low transition-all text-label-md font-label-md">
+<span class="material-symbols-outlined">favorite</span> Save
+                </button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-xxl">
+<!-- Left Column: Gallery -->
+<div class="lg:col-span-7 space-y-md">
+<div class="rounded-xl overflow-hidden shadow-sm aspect-[16/10] bg-surface-container">
+<img class="w-full h-full object-cover transition-opacity duration-300" data-alt="A stunning side profile of a 2022 Porsche 911 GT3 in Shark Blue, parked in a minimalist high-tech garage with polished concrete floors and soft overhead studio lighting. The aesthetic is clean, professional, and luxurious, emphasizing the car's aerodynamic curves and aggressive rear wing. The color palette is dominated by cool blues and crisp whites." id="main-image" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjFZyXce1ZmWLVTYL68jVVnbrY17kW4T_hn29riah6JjQyLZrORi-EE5ryBqCsh5DJjqprDwoWvSdpxEuoJC1WTGMZ7Vjd6ZzPxS1TgLGB8vlT5-86mpq61vYQRqkRblH7ICJiU-SLFl1lbI2yK_99NKxbFyLlHlXvo8EKhVWcdcEmZdpUaLlt52ar54wjp3renYTEIQT5BGiw0A5A0qW5FZ5Tg9lax7KVk3BIFG_ryboTQHS9HQhAIAdOwX4IHoKOno3hPGf2KBo"/>
+</div>
+<div class="grid grid-cols-4 gap-md">
+<button class="aspect-square rounded-lg overflow-hidden border-2 border-primary" onclick="document.getElementById('main-image').src='https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?auto=format&amp;fit=crop&amp;q=80&amp;w=1200'">
+<img class="w-full h-full object-cover" data-alt="Close up of a blue luxury sports car in a minimalist studio. High-end lighting and sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCW19Im9HEYzwkyGEjZIojhJOOFSrmSgX7gDN6KgfkbIKWcNiUb_QU-JVKxg5I2rQfbKHIYI26_21sVSSK_j5Yty81iY7-a4gIPYRNNNk9F7ncM_ReJ-uLOZ14E_f2rxAQlJCuwOUBcPwZKGvHgp-Udh5y0Zlg9EmWDmr_t9diMzBSIkdg2Ko8c6Z4j_2swd_fkS6l5VhWpXAxNt0qsHNVb0G3D1r6WprKzlSzH1A8MWCo6cabYxsQvPe9NQoDhuXEA87JRGTMnIzk"/>
+</button>
+<button class="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-outline transition-all" onclick="document.getElementById('main-image').src='https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&amp;fit=crop&amp;q=80&amp;w=1200'">
+<img class="w-full h-full object-cover" data-alt="Rear view of a modern sports car with a large aerodynamic wing, set in a brightly lit architectural space with clean lines and soft ambient shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBs_kpwA4LcaQX_v5Zp8l6XWKbaCc0sRpAhcAzqhczEKwqqkFIRgdGcG-E1llnYSwW6swss22lVPZIONRsgDvxXNxB48a5UXNzzahMtyRE5V3WNqvgsaetqF4M8jRs1Nf8V7KEEyJsap0DypAXA4Fb8M00jVuYHhHq3cqJD9jPax8wfKYNgAYmDCntwCkeIoGhnXPUoaRju5uFkveyRQ03I1bZUZlyNOkg5gtbRUrd9hQufy7iGbxcVAq_xzUFICwQRyCvwb6L2brU"/>
+</button>
+<button class="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-outline transition-all" onclick="document.getElementById('main-image').src='https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&amp;fit=crop&amp;q=80&amp;w=1200'">
+<img class="w-full h-full object-cover" data-alt="Detailed shot of a luxury car wheel and braking system, featuring yellow calipers and high-performance tires in a minimalist, high-key studio environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChQtYlUOrtAVZaggbU3P8VYPKzOa0W4qP1VfyCbiLUWlsLE3EbJ2K31eMRt3INdmKIq-9dMOCcmTPYHkZKPHkFr4R3eEd8jg32kjhONoBSoiHZUR3Katb40ne-d3oRkSGNC0N-5_wwE8zcqd2netxwJP413_XyiKs3iqMj7RK14acbALi4WnZyUTO9xQ9h_T5zPLeQvhCAlqiE6XAdQRJfPMNx9R0qqa6NZKJEjCah-ybLkFWtrVJx-GRVG-OkUNjsd5u-Ynr_o_M"/>
+</button>
+<button class="relative aspect-square rounded-lg overflow-hidden group">
+<img class="w-full h-full object-cover blur-[2px]" data-alt="Interior cockpit of a high-performance sports car with carbon fiber details and alcantara steering wheel. Bright, clinical studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVifstWopG-fVNmxuVOowX50xirsTpYRxhUzjJOLG2Vu5TGxKvjuTLEZBecUeh8TZIFBajyKO8QWZse37jn67gltfMIOSMpGIbTlyiWeTk_1dzk6RIQDRVD3_aZQU1SMqcjYU142BA2uRil7d6459KnKub6QgDtSIRD9N4N_5rWa9qjoIwKH3uU3uYoRQOwcd8pUfR-js9gPl5SLbgaP9FIQrzexOmngfRuGfPwZwsLePjgZJKm3dTF7adld4uL60cj-8Ot8W9CDs"/>
+<div class="absolute inset-0 bg-primary/40 flex items-center justify-center text-on-primary font-label-md text-label-md group-hover:bg-primary/50 transition-all">
+                            +12 photos
+                        </div>
+</button>
+</div>
+<!-- Description Section -->
+<div class="pt-xl border-t border-outline-variant/30 mt-xxl">
+<h2 class="font-headline-md text-headline-md mb-md">Description</h2>
+<div class="text-on-surface-variant font-body-md text-body-md leading-relaxed space-y-md" id="detail-description">
+<p>Rare allocation 2022 Porsche 911 GT3 (992) finished in Shark Blue with Leather/Race-Tex Interior in Black with Shark Blue Stitching. Original owner, meticulously maintained and kept in a climate-controlled environment. No track time.</p>
+<ul class="list-disc pl-lg space-y-xs">
+<li>Carbon Fiber Roof</li>
+<li>Full Front PPF and Ceramic Coating</li>
+<li>PCCB (Porsche Ceramic Composite Brakes)</li>
+<li>Front Axle Lift System</li>
+<li>BOSE Surround Sound System</li>
+</ul>
+<p>Serious inquiries only. Car is currently located in Scottsdale, AZ. Title in hand.</p>
+</div>
+</div>
+</div>
+<!-- Right Column: Details & CTA -->
+<div class="lg:col-span-5">
+<div class="sticky top-24 space-y-lg">
+<!-- Price & Title Card -->
+<div class="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm">
+<div class="flex justify-between items-start mb-xs">
+<span class="text-display-lg font-display-lg text-primary" id="detail-price">$214,500</span>
+<span class="bg-secondary-container text-on-secondary-container px-sm py-1 rounded-full font-label-sm text-label-sm" id="detail-status">Active</span>
+</div>
+<h1 class="text-headline-lg font-headline-lg mb-md leading-tight" id="detail-title">2022 Porsche 911 GT3 (992)</h1>
+<div class="flex items-center gap-sm mb-xl text-on-surface-variant">
+<span class="flex items-center gap-xs font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]">location_on</span> <span id="detail-location">Scottsdale, AZ</span>
+                            </span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="font-label-md text-label-md" id="detail-date">Posted 2 days ago</span>
+</div>
+<!-- Specs Grid -->
+<div class="grid grid-cols-2 gap-md mb-xl" id="specs-grid">
+<div class="bg-surface-container-low p-md rounded-lg">
+<span class="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Year</span>
+<span class="font-headline-sm text-headline-sm">2022</span>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg">
+<span class="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Mileage</span>
+<span class="font-headline-sm text-headline-sm">1,240 mi</span>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg">
+<span class="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Fuel</span>
+<span class="font-headline-sm text-headline-sm">Gasoline</span>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg">
+<span class="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Transmission</span>
+<span class="font-headline-sm text-headline-sm">7-spd PDK</span>
+</div>
+</div>
+<div class="space-y-sm">
+<button class="w-full bg-primary text-on-primary py-md rounded-lg font-headline-sm text-headline-sm hover:opacity-95 transition-all flex items-center justify-center gap-md">
+<span class="material-symbols-outlined">mail</span> Contact Seller
+                            </button>
+<button class="w-full bg-surface-container-high text-primary py-md rounded-lg font-headline-sm text-headline-sm hover:bg-surface-container-highest transition-all flex items-center justify-center gap-md">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">social_leaderboard</span> View on Facebook
+                            </button>
+</div>
+</div>
+<!-- Seller Card -->
+<div class="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm">
+<div class="flex items-center gap-md mb-lg">
+<img class="w-14 h-14 rounded-full object-cover" data-alt="Close-up of a professional car enthusiast/dealer, mid-30s, clean-shaven, wearing a premium polo shirt. Soft studio lighting, minimalist gray background, high-quality resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjKEeUW1imA7w4TKDpHDl2bE_3ZX7fyyi98hDFgSWAp2AO-y9gLImDPiDF1PJ9hUnGqoLtyv9irSSnHtcBDqChh-dJaGzBHHQ-hiXVOJbsQipP90GHPOJ0mpF2WKBoREtqr78CwY3-8j_XXKhGrbRbHw9ojrnfVIO8A6t-T2B_jKGtKn9EmtfDH1_Bw6IR87dD-GNP5t64AvxQSKbTMLbOlP6Cnxk7ahOmM7fKoAt78tCLiMMgeqAIG4sOV4NkO6kvb19JaY0epjI"/>
+<div>
+<h3 class="font-headline-sm text-headline-sm">Julian Vance</h3>
+<div class="flex items-center gap-xs text-secondary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span> Verified Seller
+                                </div>
+</div>
+</div>
+<div class="flex justify-between items-center py-sm border-t border-outline-variant/20">
+<span class="text-on-surface-variant font-body-sm text-body-sm">Seller Rating</span>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-label-md">4.9 (28 sales)</span>
+</div>
+</div>
+<a class="block text-center mt-md text-primary font-label-md text-label-md hover:underline" href="/dashboard.html">View Seller's Other Listings</a>
+</div>
+<!-- Map Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+<div class="h-48 w-full bg-surface-container relative">
+<!-- Placeholder for actual map integration -->
+<img class="w-full h-full object-cover grayscale opacity-60" data-alt="A clean, minimalist topographical map style rendering of Scottsdale, Arizona. Monochromatic gray tones with soft teal highlights for landmarks. High-end SaaS interface style map visualization." data-location="Scottsdale, Arizona" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsfpI1utSeKWIhUUXruaSPyJeh7ptC3i8748zj9gKoBQgvv6-x9NSxSZGX4T_teAlVim5w8ip347RRa3imIcs5QdVfv20pjughxSAoB1HJEg2R1iCodCjxekUxdJwu6bIG_UJkDqzttgYDZrbNUjjq2Dmtfby6SZcV1Sa2ymf-sp_8DZS5MVnvaqIbQfmfYn2JQVOfPkymHWH1PcEvOif03t0mPhKeMQcqgI_e09wbZwmaJXaJAyYJTZ9vo24CMvgNIHnoyyuCtA0"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[32px]" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+</div>
+</div>
+<div class="p-md">
+<p class="text-on-surface font-label-md text-label-md">Location: North Scottsdale, AZ 85255</p>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Detailed address provided upon inquiry.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Related Listings Section -->
+<section class="mt-xxl pt-xxl border-t border-outline-variant/30">
+<div class="flex justify-between items-center mb-xl">
+<h2 class="font-headline-lg text-headline-lg">Similar High-End Listings</h2>
+<a class="text-primary font-label-md text-label-md hover:underline flex items-center gap-xs" href="/dashboard.html">
+                    View all <span class="material-symbols-outlined">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
+<!-- Related Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer">
+<div class="aspect-[4/3] relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A bright white Lamborghini Huracan parked in a clean minimalist street setting at dawn. Soft purple and orange horizon light, extremely high-quality car photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiTimUcF1jiFsj3e7538EuPmamdmfx8oHg24Z5NMNJq4gNdg4nZUlil36usFbLNzubStPgn5flvaeOqpr6Yp9G_9sAdEmZgbX0xvm7mDRqkYmhi-VQ14J_Njb5BQSN_dPDa-NJ_WBF0m94wvv_uY-BVZtZfQXr9pWvWxDct8jgKeoVHEYV_k0jTJU3S__if72oEsAv68j-e4BadwAZ1AEmWUTc7-VzOY9Gf8zNY29fGeBQDJKCwPkb1IUpRQSTWpikHi1stWE7KDA"/>
+<button class="absolute top-md right-md w-10 h-10 bg-white/80 rounded-full glass-effect flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div class="p-md">
+<span class="text-on-surface-variant font-label-sm text-label-sm mb-1 block">Vehicles</span>
+<h4 class="font-headline-sm text-headline-sm mb-xs group-hover:text-primary transition-colors">2021 Lamborghini Huracan EVO</h4>
+<p class="text-primary font-bold text-headline-sm mb-md">$289,000</p>
+<div class="flex items-center gap-xs text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span> Los Angeles, CA
+                        </div>
+</div>
+</div>
+<!-- Related Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer">
+<div class="aspect-[4/3] relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Ferrari 488 Pista in Rosso Corsa red, captured in a clinical studio setting with perfectly diffused lighting and soft shadows. High contrast between the red car and neutral background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1SsG5ctf28IllDmKlBqbaFm1oountPXZ2Vx0XdHegNWKbceNBCX6-a47QaetQQNmPwxuhvow1OUsQoETrIZbg9Mi5TbUTzrf4Q9gHVcqpkMKzxH64XnKRYsgn2QZ_XzLk7DtY7xvGEB-u23AJNn08YZ2ucRsARv9DNbDRpy84Og_T2uZUCZ1I-9stv1bwEgPvL4j1JWnqnT7TJu4bhUjJSUXytO0apa725b7hPIuZsmdCfQRgL6wLHRyPifJll3XlBWJno79NRJo"/>
+<button class="absolute top-md right-md w-10 h-10 bg-white/80 rounded-full glass-effect flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div class="p-md">
+<span class="text-on-surface-variant font-label-sm text-label-sm mb-1 block">Vehicles</span>
+<h4 class="font-headline-sm text-headline-sm mb-xs group-hover:text-primary transition-colors">2019 Ferrari 488 Pista</h4>
+<p class="text-primary font-bold text-headline-sm mb-md">$412,000</p>
+<div class="flex items-center gap-xs text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span> Miami, FL
+                        </div>
+</div>
+</div>
+<!-- Related Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer">
+<div class="aspect-[4/3] relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Modern McLaren 720S in a dark volcanic orange, parked in a minimalist architectural driveway at twilight. High-end car photography, moody lighting, crisp details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpx6tGU_bulHQh_1-SkooLQVd4oUUR4wkQD-LAILezW4lHSqzoryzl2DntWgvyqxe9KhDq5yItvuDQ773HTTXbBlkvWleiYK2Wzbv5JKCfKI4zaFuccWKQy9h_zWB0ZzAM3Dcprk8k2dNGlYuZld5YwCZj9b8NhbZ0nJJZp3QE_HTsVQmVPOCFAMbIDi68TEdDHpN_-ZpjJLS8hnrl6zuCfdeD6eCuk4bMEJOIl3mMLmKX0wgDfblSqUTBa9HqCC1XchDmV7Ho7vE"/>
+<button class="absolute top-md right-md w-10 h-10 bg-white/80 rounded-full glass-effect flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div class="p-md">
+<span class="text-on-surface-variant font-label-sm text-label-sm mb-1 block">Vehicles</span>
+<h4 class="font-headline-sm text-headline-sm mb-xs group-hover:text-primary transition-colors">2023 McLaren 720S</h4>
+<p class="text-primary font-bold text-headline-sm mb-md">$325,000</p>
+<div class="flex items-center gap-xs text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span> Dallas, TX
+                        </div>
+</div>
+</div>
+<!-- Related Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer">
+<div class="aspect-[4/3] relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Mercedes-AMG GT Black Series in a matte gray finish, located in a high-tech modern underground parking with neon light strips. Professional automotive photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf3ZTSa_dV7ZtDJtsvXqd7Zw7tfERTaZBvX0ClQB8vDc0hk0Ahm4iuAv8yrFJuWRwsJu9TwBIxpMdCwPbW6ML4ZXxnocyE179icbQNaERzKNKhEZ8oNlQEBB77MuJehNyrhMhaSi8l2DGzkxJK-ZLVam9BbdMJip-4zp-aprVdsaHuWP7EGAiiynwaAGelZJnjqSCqmZ4hpWFMAXzB7lTaDchRaE8VhWPsasGGHxHTKRN9EnTnPqqsNXwT2EFhDKVlBH-mY1ZUEBQ"/>
+<button class="absolute top-md right-md w-10 h-10 bg-white/80 rounded-full glass-effect flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div class="p-md">
+<span class="text-on-surface-variant font-label-sm text-label-sm mb-1 block">Vehicles</span>
+<h4 class="font-headline-sm text-headline-sm mb-xs group-hover:text-primary transition-colors">2021 Mercedes-AMG GT</h4>
+<p class="text-primary font-bold text-headline-sm mb-md">$158,000</p>
+<div class="flex items-center gap-xs text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span> Greenwich, CT
+                        </div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest border-t border-outline-variant/30 py-xxl mt-xxl">
+<div class="max-w-container-max mx-auto px-lg grid grid-cols-1 md:grid-cols-4 gap-xl">
+<div class="col-span-2">
+<span class="text-headline-md font-headline-md font-bold text-primary mb-md block">GroupMarket</span>
+<p class="text-on-surface-variant font-body-md text-body-md max-w-md">The premium marketplace for niche Facebook groups and automotive enthusiasts. Experience the power of social commerce with professional tools and verification.</p>
+</div>
+<div>
+<h5 class="font-headline-sm text-headline-sm mb-md">Marketplace</h5>
+<ul class="space-y-sm text-on-surface-variant font-body-sm text-body-sm">
+<li><a class="hover:text-primary transition-colors" href="/dashboard.html">Browse Vehicles</a></li>
+<li><a class="hover:text-primary transition-colors" href="/dashboard.html">Group Collections</a></li>
+<li><a class="hover:text-primary transition-colors" href="/dashboard.html">Buying Guide</a></li>
+<li><a class="hover:text-primary transition-colors" href="/dashboard.html">Sell an Item</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-headline-sm text-headline-sm mb-md">Resources</h5>
+<ul class="space-y-sm text-on-surface-variant font-body-sm text-body-sm">
+<li><a class="hover:text-primary transition-colors" href="/dashboard.html">Trust &amp; Safety</a></li>
+<li><a class="hover:text-primary transition-colors" href="/dashboard.html">Seller Dashboard</a></li>
+<li><a class="hover:text-primary transition-colors" href="/dashboard.html">Help Center</a></li>
+<li><a class="hover:text-primary transition-colors" href="/dashboard.html">Terms of Service</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-container-max mx-auto px-lg mt-xxl pt-lg border-t border-outline-variant/20 flex flex-col md:flex-row justify-between items-center gap-md">
+<p class="text-on-surface-variant font-label-sm text-label-sm">© 2024 GroupMarket Inc. All rights reserved.</p>
+<div class="flex gap-lg">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">language</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">share</span>
+</div>
+</div>
+</footer>
+<!-- Mobile Navigation -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface/95 dark:bg-surface-container-lowest/95 backdrop-blur-lg border-t border-outline-variant/20 shadow-lg h-16 pb-safe px-md flex justify-around items-center">
+<a class="flex flex-col items-center justify-center text-secondary font-bold" href="/dashboard.html">
+<span class="material-symbols-outlined">search</span>
+<span class="text-label-sm font-label-sm">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="/dashboard.html">
+<span class="material-symbols-outlined">favorite</span>
+<span class="text-label-sm font-label-sm">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="/dashboard.html">
+<span class="material-symbols-outlined">groups</span>
+<span class="text-label-sm font-label-sm">Groups</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="/dashboard.html">
+<span class="material-symbols-outlined">person_outline</span>
+<span class="text-label-sm font-label-sm">Profile</span>
+</a>
+</nav>
+<!-- Shared State -->
+<script src="/assets/js/shared-state.js"></script>
+<script>
+        // Simple Gallery Thumbnail logic
+        const thumbnails = document.querySelectorAll('.grid-cols-4 button');
+        thumbnails.forEach(btn => {
+            btn.addEventListener('click', () => {
+                thumbnails.forEach(t => t.classList.remove('border-primary'));
+                thumbnails.forEach(t => t.classList.add('border-transparent'));
+                btn.classList.remove('border-transparent');
+                btn.classList.add('border-primary');
+            });
+        });
+
+        // Hover scale interaction logic
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(btn => {
+            btn.addEventListener('mousedown', () => {
+                btn.classList.add('scale-[0.98]');
+            });
+            btn.addEventListener('mouseup', () => {
+                btn.classList.remove('scale-[0.98]');
+            });
+        });
+
+        // Dynamic Loading from GMState
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.GMState) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const postId = urlParams.get('id');
+                if (postId) {
+                    const posts = window.GMState.getPosts();
+                    const post = posts.find(p => p.id === postId);
+                    if (post) {
+                        // Update Page Elements
+                        document.title = `${post.title} | GroupMarket`;
+                        
+                        const breadcrumbCat = document.getElementById('breadcrumb-category');
+                        if (breadcrumbCat) {
+                            breadcrumbCat.textContent = post.category || 'General';
+                            breadcrumbCat.href = `/marketplace.html?category=${encodeURIComponent(post.category || '')}`;
+                        }
+                        
+                        const breadcrumbTitle = document.getElementById('breadcrumb-title');
+                        if (breadcrumbTitle) breadcrumbTitle.textContent = post.title;
+                        
+                        const mainImg = document.getElementById('main-image');
+                        if (mainImg) {
+                            mainImg.src = post.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
+                            mainImg.alt = post.title;
+                        }
+                        
+                        const detailPrice = document.getElementById('detail-price');
+                        if (detailPrice) detailPrice.textContent = `$${Number(post.price).toLocaleString()}`;
+                        
+                        const detailStatus = document.getElementById('detail-status');
+                        if (detailStatus) {
+                            detailStatus.textContent = post.status.toUpperCase();
+                            if (post.status === 'approved') {
+                                detailStatus.className = 'bg-secondary-container text-on-secondary-container px-sm py-1 rounded-full font-label-sm text-label-sm';
+                            } else if (post.status === 'rejected') {
+                                detailStatus.className = 'bg-error-container text-on-error-container px-sm py-1 rounded-full font-label-sm text-label-sm';
+                            } else {
+                                detailStatus.className = 'bg-surface-container-high text-on-surface-variant px-sm py-1 rounded-full font-label-sm text-label-sm';
+                            }
+                        }
+                        
+                        const detailTitle = document.getElementById('detail-title');
+                        if (detailTitle) detailTitle.textContent = post.title;
+                        
+                        const detailLocation = document.getElementById('detail-location');
+                        if (detailLocation) detailLocation.textContent = post.sourceGroup || 'Facebook Group';
+                        
+                        const detailDate = document.getElementById('detail-date');
+                        if (detailDate) detailDate.textContent = `Posted ${post.date || 'recently'}`;
+                        
+                        const detailDesc = document.getElementById('detail-description');
+                        if (detailDesc) {
+                            detailDesc.innerHTML = `<p>${post.description || 'No description provided.'}</p>`;
+                            if (post.rejectionReason) {
+                                detailDesc.innerHTML += `
+                                    <div class="mt-md p-md bg-error-container/20 border border-error/20 rounded-lg text-error">
+                                        <p class="font-bold flex items-center gap-xs"><span class="material-symbols-outlined text-[18px]">warning</span> Moderation Rejection Reason:</p>
+                                        <p class="text-body-sm mt-xs">${post.rejectionReason}</p>
+                                    </div>
+                                `;
+                            }
+                        }
+                        
+                        // Specs Grid - custom or hide if not vehicle
+                        const specsGrid = document.getElementById('specs-grid');
+                        if (specsGrid) {
+                            if (post.category && post.category.toLowerCase() === 'vehicles') {
+                                specsGrid.style.display = 'grid';
+                            } else {
+                                specsGrid.innerHTML = `
+                                    <div class="bg-surface-container-low p-md rounded-lg col-span-2">
+                                        <span class="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Category</span>
+                                        <span class="font-headline-sm text-headline-sm">${post.category || 'General'}</span>
+                                    </div>
+                                `;
+                            }
+                        }
+                        
+                        // Set thumbnails to match the main image
+                        const thumbs = document.querySelectorAll('.grid-cols-4 button img');
+                        if (thumbs.length > 0) {
+                            thumbs.forEach(img => {
+                                img.src = post.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
+                            });
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body></html>
