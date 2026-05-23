@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getFavoritedIdsAction, toggleFavoriteAction } from '../../actions';
 
 interface Listing {
   id: string;
@@ -40,8 +41,42 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
   const imageGallery = listing.images && listing.images.length > 0 ? listing.images : [defaultFallback];
   const [activeImage, setActiveImage] = useState(imageGallery[0]);
   const [saved, setSaved] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'info'>('success');
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Fetch favorite state on load
+  useEffect(() => {
+    async function checkSavedState() {
+      try {
+        const favIds = await getFavoritedIdsAction();
+        if (favIds.includes(listing.id)) {
+          setSaved(true);
+        }
+      } catch (err) {
+        console.error('Error fetching favorited state:', err);
+      }
+    }
+    checkSavedState();
+  }, [listing.id]);
+
+  const handleToggleFavorite = async () => {
+    try {
+      const result = await toggleFavoriteAction(listing.id);
+      if (result.success) {
+        const nextSavedState = result.favorited ?? !saved;
+        setSaved(nextSavedState);
+        setToastType(nextSavedState ? 'success' : 'info');
+        setToastMessage(nextSavedState ? 'Added to Saved Listings!' : 'Removed from Saved Listings.');
+        setTimeout(() => setToastMessage(null), 3000);
+      } else {
+        console.error('Failed to toggle favorite:', result.error);
+      }
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+    }
+  };
 
   // Parse specifications
   const specsObj = (listing.specs && typeof listing.specs === 'object') ? (listing.specs as Record<string, any>) : {};
@@ -73,6 +108,19 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
           <div className="px-md py-sm rounded-lg shadow-lg flex items-center gap-sm bg-primary text-white">
             <span className="material-symbols-outlined">link</span>
             <span className="text-label-md font-medium">Link copied to clipboard!</span>
+          </div>
+        </div>
+      )}
+
+      {toastMessage && (
+        <div className="fixed bottom-lg right-lg z-50 animate-bounce">
+          <div className={`px-md py-sm rounded-lg shadow-lg flex items-center gap-sm text-white ${
+            toastType === 'success' ? 'bg-secondary' : 'bg-primary'
+          }`}>
+            <span className="material-symbols-outlined">
+              {toastType === 'success' ? 'check_circle' : 'info'}
+            </span>
+            <span className="text-label-md font-medium">{toastMessage}</span>
           </div>
         </div>
       )}
@@ -173,7 +221,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
               <span className="material-symbols-outlined">share</span> Share
             </button>
             <button
-              onClick={() => setSaved(!saved)}
+              onClick={handleToggleFavorite}
               className={`flex items-center gap-xs px-md py-xs rounded-lg border transition-all text-label-md font-label-md ${
                 saved
                   ? 'border-secondary bg-secondary-container/20 text-secondary'

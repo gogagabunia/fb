@@ -298,11 +298,29 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="divide-y divide-outline-variant/20">
                   {loading ? (
-                    <tr>
-                      <td colSpan={4} className="px-lg py-xl text-center text-slate-400">
-                        <span className="material-symbols-outlined animate-spin mr-sm">sync</span> Loading imported posts...
-                      </td>
-                    </tr>
+                    [1, 2, 3].map((i) => (
+                      <tr key={i} className="animate-pulse">
+                        <td className="px-lg py-md align-top">
+                          <div className="flex gap-md">
+                            <div className="w-20 h-16 bg-slate-100 rounded-lg shrink-0"></div>
+                            <div className="space-y-2 w-2/3">
+                              <div className="h-4 bg-slate-100 rounded w-1/4"></div>
+                              <div className="h-4 bg-slate-100 rounded w-full"></div>
+                              <div className="h-3 bg-slate-100 rounded w-1/2"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-lg py-md align-middle">
+                          <div className="h-4 bg-slate-100 rounded w-20"></div>
+                        </td>
+                        <td className="px-lg py-md align-middle">
+                          <div className="h-4 bg-slate-100 rounded w-16"></div>
+                        </td>
+                        <td className="px-lg py-md align-middle text-right">
+                          <div className="h-8 bg-slate-100 rounded w-24 ml-auto"></div>
+                        </td>
+                      </tr>
+                    ))
                   ) : filteredPosts.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-lg py-xl text-center text-on-surface-variant/60">

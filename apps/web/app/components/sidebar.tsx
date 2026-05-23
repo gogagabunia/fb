@@ -24,6 +24,8 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/dashboard' },
     { id: 'admin', label: 'Moderation Queue', icon: 'gavel', href: '/admin' },
     { id: 'add-group', label: 'Connected Groups', icon: 'groups', href: '/add-group' },
+    { id: 'favorites', label: 'Saved Listings', icon: 'favorite', href: '/favorites' },
+    { id: 'settings', label: 'Account Settings', icon: 'settings', href: '/settings' },
     { id: 'marketplace', label: 'View Marketplace', icon: 'storefront', href: '/marketplace' },
   ];
 

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getMarketplaceListings } from '../actions';
+import { getMarketplaceListings, getFavoritedIdsAction, toggleFavoriteAction } from '../actions';
 import SearchBar from './components/search-bar';
+import { MarketplaceSkeleton } from '../components/skeleton';
 
 interface Listing {
   id: string;
@@ -36,6 +37,7 @@ export default function MarketplacePage() {
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [loading, setLoading] = useState(true);
+  const [favoritedIds, setFavoritedIds] = useState<string[]>([]);
 
   // Load from database server action
   useEffect(() => {
@@ -43,6 +45,8 @@ export default function MarketplacePage() {
       try {
         const data = await getMarketplaceListings();
         setListings(data as any);
+        const favIds = await getFavoritedIdsAction();
+        setFavoritedIds(favIds);
       } catch (error) {
         console.error('Error fetching marketplace listings:', error);
       } finally {
@@ -51,6 +55,23 @@ export default function MarketplacePage() {
     }
     loadData();
   }, []);
+
+  async function handleToggleFavorite(listingId: string, title: string) {
+    try {
+      const result = await toggleFavoriteAction(listingId);
+      if (result.success) {
+        if (result.favorited) {
+          setFavoritedIds([...favoritedIds, listingId]);
+        } else {
+          setFavoritedIds(favoritedIds.filter(id => id !== listingId));
+        }
+      } else {
+        console.error('Failed to toggle favorite:', result.error);
+      }
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+    }
+  }
 
   // Compute unique categories dynamically from database listings, merging in defaults
   const categories = ['All', ...Array.from(new Set(listings.map((l) => l.category)))];
@@ -258,16 +279,7 @@ export default function MarketplacePage() {
               </div>
 
               {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-md md:gap-lg">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="bg-white rounded-xl border border-outline-variant/30 p-md h-[380px] animate-pulse flex flex-col justify-between">
-                      <div className="h-40 w-full bg-slate-200 rounded-lg"></div>
-                      <div className="h-6 w-3/4 bg-slate-200 rounded mt-4"></div>
-                      <div className="h-4 w-1/2 bg-slate-200 rounded mt-2"></div>
-                      <div className="h-10 w-full bg-slate-200 rounded-lg mt-6"></div>
-                    </div>
-                  ))}
-                </div>
+                <MarketplaceSkeleton />
               ) : filteredListings.length === 0 ? (
                 <div className="py-xxl flex flex-col items-center justify-center text-center bg-white border border-outline-variant/30 rounded-xl px-md">
                   <span className="material-symbols-outlined text-[64px] text-outline mb-md">storefront</span>
@@ -290,8 +302,18 @@ export default function MarketplacePage() {
                           alt={post.title}
                         />
                         <div className="absolute top-sm right-sm">
-                          <button className="bg-white/90 backdrop-blur-md p-xs rounded-full shadow-sm hover:text-error transition-colors flex items-center justify-center">
-                            <span className="material-symbols-outlined text-[18px]">favorite</span>
+                          <button
+                            onClick={() => handleToggleFavorite(post.id, post.title)}
+                            className={`bg-white/90 backdrop-blur-md p-xs rounded-full shadow-sm transition-colors flex items-center justify-center hover:scale-105 active:scale-95 ${
+                              favoritedIds.includes(post.id) ? 'text-error' : 'text-on-surface-variant hover:text-error'
+                            }`}
+                          >
+                            <span
+                              className="material-symbols-outlined text-[18px]"
+                              style={{ fontVariationSettings: favoritedIds.includes(post.id) ? "'FILL' 1" : "'FILL' 0" }}
+                            >
+                              favorite
+                            </span>
                           </button>
                         </div>
                       </div>

@@ -4,6 +4,7 @@ import { PrismaClient, PostStatus } from 'database';
 import { PlaywrightScraperService } from '../../api/src/scrapers/playwright-scraper.service';
 import { OpenAIParserService } from '../../api/src/parser/openai-parser.service';
 import { revalidatePath } from 'next/cache';
+import { getSession } from './lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -345,5 +346,140 @@ export async function getCategories() {
   } catch (error) {
     console.error('Failed to get categories:', error);
     return [];
+  }
+}
+
+/**
+ * Toggle listing favorite status for current user
+ */
+export async function toggleFavoriteAction(listingId: string) {
+  try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in to save listings.' };
+    }
+
+    const existing = await prisma.savedListing.findUnique({
+      where: {
+        userId_listingId: {
+          userId,
+          listingId
+        }
+      }
+    });
+
+    if (existing) {
+      await prisma.savedListing.delete({
+        where: {
+          userId_listingId: {
+            userId,
+            listingId
+          }
+        }
+      });
+      revalidatePath('/marketplace');
+      revalidatePath('/favorites');
+      revalidatePath(`/listing-detail/${listingId}`);
+      return { success: true, favorited: false };
+    } else {
+      await prisma.savedListing.create({
+        data: {
+          userId,
+          listingId
+        }
+      });
+      revalidatePath('/marketplace');
+      revalidatePath('/favorites');
+      revalidatePath(`/listing-detail/${listingId}`);
+      return { success: true, favorited: true };
+    }
+  } catch (error: any) {
+    console.error('Failed to toggle favorite:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Fetch all favorited listings for the current user
+ */
+export async function getFavoritesAction() {
+  try {
+    const userId = await getSession();
+    if (!userId) return [];
+
+    const saved = await prisma.savedListing.findMany({
+      where: { userId },
+      include: {
+        listing: {
+          include: {
+            categoryRel: true,
+            importedPost: {
+              include: {
+                group: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return saved.map(s => s.listing);
+  } catch (error) {
+    console.error('Failed to get favorites:', error);
+    return [];
+  }
+}
+
+/**
+ * Get all favorited listing IDs for the current user
+ */
+export async function getFavoritedIdsAction() {
+  try {
+    const userId = await getSession();
+    if (!userId) return [];
+
+    const saved = await prisma.savedListing.findMany({
+      where: { userId },
+      select: { listingId: true }
+    });
+
+    return saved.map(s => s.listingId);
+  } catch (error) {
+    console.error('Failed to get favorite IDs:', error);
+    return [];
+  }
+}
+
+/**
+ * Update current user's profile details
+ */
+export async function updateProfileDetailsAction(firstName: string, lastName: string) {
+  try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in to update details.' };
+    }
+
+    if (!firstName.trim()) {
+      return { success: false, error: 'First name is required.' };
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstName: firstName.trim(),
+        lastName: lastName?.trim() || null
+      }
+    });
+
+    revalidatePath('/dashboard');
+    revalidatePath('/admin');
+    revalidatePath('/add-group');
+    revalidatePath('/settings');
+    return { success: true, user };
+  } catch (error: any) {
+    console.error('Failed to update profile:', error);
+    return { success: false, error: error.message };
   }
 }

@@ -118,3 +118,55 @@ export async function getCurrentUser() {
     return null;
   }
 }
+
+/**
+ * Update current user's password
+ */
+export async function updatePasswordAction(formData: FormData) {
+  const currentPassword = formData.get('currentPassword') as string;
+  const newPassword = formData.get('newPassword') as string;
+  const confirmPassword = formData.get('confirmPassword') as string;
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return { error: 'All fields are required.' };
+  }
+
+  if (newPassword.length < 6) {
+    return { error: 'New password must be at least 6 characters.' };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { error: 'New passwords do not match.' };
+  }
+
+  const userId = await getSession();
+  if (!userId) {
+    return { error: 'You must be logged in to update your password.' };
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.passwordHash) {
+      return { error: 'User not found.' };
+    }
+
+    const isValid = await verifyPassword(currentPassword, user.passwordHash);
+    if (!isValid) {
+      return { error: 'Incorrect current password.' };
+    }
+
+    const newHash = await hashPassword(newPassword);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newHash },
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to update password:', error);
+    return { error: error.message || 'Failed to update password.' };
+  }
+}

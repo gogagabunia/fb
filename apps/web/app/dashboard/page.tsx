@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getDashboardStats, triggerScrapingAction } from '../actions';
 import { getCurrentUser, logoutAction } from '../auth-actions';
 import Sidebar from '../components/sidebar';
+import { DashboardSkeleton } from '../components/skeleton';
 
 interface ScrapingLog {
   id: string;
@@ -129,9 +130,7 @@ export default function DashboardPage() {
           </header>
 
           {loading ? (
-            <div className="flex items-center justify-center h-[400px] text-slate-400">
-              <span className="material-symbols-outlined animate-spin mr-sm text-3xl">sync</span> Loading system stats...
-            </div>
+            <DashboardSkeleton />
           ) : (
             <>
               {/* Stats Bar */}
