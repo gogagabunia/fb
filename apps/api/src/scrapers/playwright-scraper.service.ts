@@ -34,16 +34,24 @@ export class PlaywrightScraperService {
     const scrapedItems: any[] = [];
 
     try {
-      // Launch headless chromium with anti-fingerprinting parameters
-      browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-blink-features=AutomationControlled'
-        ]
-      });
+      const browserlessUrl = process.env.BROWSERLESS_URL;
+      
+      if (browserlessUrl) {
+        this.logger.log(`Connecting to remote Browserless CDP WebSocket: ${browserlessUrl.split('?')[0]}`);
+        browser = await chromium.connectOverCDP(browserlessUrl);
+      } else {
+        // Launch headless chromium locally
+        this.logger.log('Launching local Chromium engine...');
+        browser = await chromium.launch({
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-blink-features=AutomationControlled'
+          ]
+        });
+      }
 
       const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

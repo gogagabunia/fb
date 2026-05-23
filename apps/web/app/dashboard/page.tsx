@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getDashboardStats, triggerScrapingAction } from '../actions';
+import { getDashboardStats, triggerScrapingAction, ingestRawTextAction } from '../actions';
 import { getCurrentUser, logoutAction } from '../auth-actions';
 import Sidebar from '../components/sidebar';
 import { DashboardSkeleton } from '../components/skeleton';
@@ -38,6 +38,42 @@ export default function DashboardPage() {
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [user, setUser] = useState<{ firstName: string | null; lastName: string | null; email: string } | null>(null);
+
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [rawText, setRawText] = useState('');
+  const [ingesting, setIngesting] = useState(false);
+
+  useEffect(() => {
+    if (stats.recentGroups.length > 0 && !selectedGroup) {
+      setSelectedGroup(stats.recentGroups[0].id);
+    }
+  }, [stats.recentGroups, selectedGroup]);
+
+  async function handleManualIngest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedGroup || !rawText.trim()) {
+      showToast('Please select a group and enter listing details.', 'info');
+      return;
+    }
+
+    setIngesting(true);
+    showToast('AI Parsing pasted text block...', 'info');
+
+    try {
+      const result = await ingestRawTextAction(selectedGroup, rawText);
+      if (result.success) {
+        showToast('Successfully imported listing! Added to Moderation Queue.', 'success');
+        setRawText('');
+        loadData();
+      } else {
+        showToast(result.error || 'Failed to parse text. Is it a classified ad?', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Manual ingestion failed.', 'error');
+    } finally {
+      setIngesting(false);
+    }
+  }
 
   async function loadData() {
     try {
@@ -276,6 +312,58 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Manual Paste Ingestion Portal */}
+                  {stats.recentGroups.length > 0 && (
+                    <div className="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-sm space-y-md">
+                      <div>
+                        <h3 className="text-label-md font-bold text-on-tertiary-container uppercase tracking-wider block">
+                          Manual Feed Ingest
+                        </h3>
+                        <p className="text-[11px] text-slate-400 mt-xs leading-relaxed">
+                          Copy raw post text from Facebook, paste below, and AI will automatically parse the listing.
+                        </p>
+                      </div>
+
+                      <form onSubmit={handleManualIngest} className="space-y-md">
+                        <div className="flex flex-col gap-xs">
+                          <label className="text-[11px] font-bold text-slate-500 uppercase">Select Target Group</label>
+                          <select
+                            value={selectedGroup}
+                            onChange={(e) => setSelectedGroup(e.target.value)}
+                            className="w-full h-10 px-md rounded-lg border border-outline-variant/60 focus:border-primary outline-none text-xs font-semibold bg-white"
+                          >
+                            {stats.recentGroups.map((g) => (
+                              <option key={g.id} value={g.id}>
+                                {g.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col gap-xs">
+                          <label className="text-[11px] font-bold text-slate-500 uppercase">Paste Classified Raw Text</label>
+                          <textarea
+                            value={rawText}
+                            onChange={(e) => setRawText(e.target.value)}
+                            required
+                            rows={4}
+                            className="p-md rounded-lg border border-outline-variant/60 focus:border-primary outline-none text-xs font-medium leading-relaxed resize-none bg-white"
+                            placeholder="Example: Selling my 2018 Honda Accord EX-L in pristine condition. Asking $18,500..."
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={ingesting}
+                          className="w-full py-md bg-secondary text-on-secondary rounded-lg text-label-sm font-bold flex items-center justify-center gap-xs shadow hover:opacity-90 active:scale-[0.98] transition-all"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">{ingesting ? 'sync' : 'auto_awesome'}</span>
+                          {ingesting ? 'AI Classification...' : 'Import Listing via AI'}
+                        </button>
+                      </form>
+                    </div>
+                  )}
 
                   {/* Pro Subscription Advert Card */}
                   <div className="bg-primary text-on-primary p-xl rounded-xl shadow-lg relative overflow-hidden">

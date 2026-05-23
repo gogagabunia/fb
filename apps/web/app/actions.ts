@@ -591,3 +591,65 @@ export async function getAnalyticsSummaryAction() {
     };
   }
 }
+
+/**
+ * Direct Paste Ingest: Parse raw copied text directly via OpenAI / Regex and register as PENDING
+ */
+export async function ingestRawTextAction(groupId: string, rawText: string) {
+  try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in to ingest items.' };
+    }
+
+    const group = await prisma.facebookGroup.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group) {
+      return { success: false, error: 'Target Facebook Group not found.' };
+    }
+
+    const OpenAIParserService = require('../../api/src/parser/openai-parser.service').OpenAIParserService;
+    const parser = new OpenAIParserService();
+    const { sendAdminModerationAlert } = require('./lib/email');
+
+    // Feed the raw text block directly to the AI parser
+    const parsed = await parser.parseRawPost(rawText);
+    
+    if (!parsed.isListing) {
+      return { success: false, error: 'The provided text does not contain a valid classified listing post.' };
+    }
+
+    const postUrlId = `fb-manual-${Math.random().toString(36).substring(7)}`;
+
+    const imported = await prisma.importedPost.create({
+      data: {
+        fbPostId: postUrlId,
+        rawText: rawText.trim(),
+        images: [],
+        authorName: 'Manual Ingest',
+        authorProfile: null,
+        priceScraped: parsed.price || null,
+        status: 'PENDING',
+        groupId: group.id,
+        userId: userId
+      }
+    });
+
+    // Send admin email notification alert (non-blocking)
+    sendAdminModerationAlert({
+      id: imported.id,
+      authorName: imported.authorName,
+      rawText: imported.rawText,
+      groupName: group.name
+    }).catch((err: any) => console.error('Failed to trigger email alert:', err));
+
+    revalidatePath('/admin');
+    revalidatePath('/dashboard');
+    return { success: true, postId: imported.id };
+  } catch (error: any) {
+    console.error('Manual ingest failed:', error);
+    return { success: false, error: error.message };
+  }
+}
