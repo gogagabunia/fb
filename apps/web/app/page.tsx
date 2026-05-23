@@ -1,11 +1,16 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 
 export default function HomePage() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Top Navigation Bar */}
       <header className="bg-surface/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/30 shadow-sm">
-        <div className="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto h-20">
+        <div className="flex justify-between items-center w-full px-md md:px-lg py-sm max-w-container-max mx-auto h-20">
           <div className="flex items-center gap-xl">
             <Link className="text-headline-md font-bold text-primary" href="/">
               GroupMarket
@@ -22,7 +27,9 @@ export default function HomePage() {
               </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-md">
+          
+          {/* Desktop Right Nav */}
+          <div className="hidden md:flex items-center gap-md">
             <button className="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all">
               notifications
             </button>
@@ -37,21 +44,80 @@ export default function HomePage() {
               Register
             </Link>
           </div>
+
+          {/* Mobile Right Hamburguer */}
+          <div className="flex md:hidden items-center gap-sm">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="p-xs text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all"
+              aria-label="Toggle menu"
+            >
+              <span className="material-symbols-outlined text-[28px]">
+                {menuOpen ? 'close' : 'menu'}
+              </span>
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {menuOpen && (
+          <div className="md:hidden absolute top-20 left-0 w-full bg-surface border-b border-outline-variant/30 shadow-lg px-md py-lg z-40 flex flex-col gap-md transition-all">
+            <nav className="flex flex-col gap-sm">
+              <Link
+                onClick={() => setMenuOpen(false)}
+                className="text-primary font-bold text-headline-sm hover:text-secondary transition-colors py-xs"
+                href="/marketplace"
+              >
+                Browse Feed
+              </Link>
+              <a
+                onClick={() => setMenuOpen(false)}
+                className="text-on-surface-variant text-headline-sm hover:text-primary transition-colors py-xs"
+                href="#"
+              >
+                How it Works
+              </a>
+              <Link
+                onClick={() => setMenuOpen(false)}
+                className="text-on-surface-variant text-headline-sm hover:text-primary transition-colors py-xs"
+                href="/dashboard"
+              >
+                Admin Panel
+              </Link>
+            </nav>
+            <div className="h-px bg-outline-variant/30 w-full my-xs"></div>
+            <div className="flex flex-col gap-sm">
+              <Link
+                onClick={() => setMenuOpen(false)}
+                href="/login"
+                className="w-full text-center py-md rounded-lg font-bold text-primary bg-surface-container-low hover:bg-surface-container-high transition-all"
+              >
+                Login
+              </Link>
+              <Link
+                onClick={() => setMenuOpen(false)}
+                href="/register"
+                className="w-full text-center bg-primary text-on-primary py-md rounded-lg font-bold shadow-sm hover:opacity-90 transition-all"
+              >
+                Register
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative pt-xxl pb-xxl overflow-hidden bg-background">
-          <div className="max-w-container-max mx-auto px-lg grid lg:grid-cols-2 gap-xl items-center">
+        <section className="relative pt-xl pb-xl md:pt-xxl md:pb-xxl overflow-hidden bg-background">
+          <div className="max-w-container-max mx-auto px-md md:px-lg grid lg:grid-cols-2 gap-xl items-center">
             <div className="z-10">
               <span className="inline-block px-md py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-semibold mb-md">
                 New: Automatic AI Importing
               </span>
-              <h1 className="text-display-lg font-display-lg text-primary mb-lg max-w-xl">
+              <h1 className="text-4xl md:text-5xl lg:text-display-lg font-display-lg text-primary mb-lg max-w-xl leading-tight">
                 Turn Facebook Group Posts into a <span className="text-secondary">Premium Marketplace</span>
               </h1>
-              <p className="text-body-md text-on-surface-variant mb-xl max-w-lg text-lg">
+              <p className="text-body-md text-on-surface-variant mb-xl max-w-lg text-md md:text-lg">
                 Transform chaotic social media selling into a structured, searchable, and professional storefront. Automatically import listings while keeping total control.
               </p>
               <div className="flex flex-wrap gap-md">
@@ -86,7 +152,7 @@ export default function HomePage() {
             </div>
 
             {/* Visual Mockup (Bento Style) */}
-            <div className="relative lg:h-[600px] flex items-center justify-center">
+            <div className="relative lg:h-[600px] flex items-center justify-center mt-xl lg:mt-0">
               <div className="absolute inset-0 bg-primary/5 rounded-[48px] blur-3xl -rotate-6 scale-95"></div>
               <div className="relative w-full grid grid-cols-6 grid-rows-6 gap-sm max-w-xl">
                 {/* Messy FB Post */}
@@ -135,13 +201,13 @@ export default function HomePage() {
 
         {/* Features Bento Grid */}
         <section className="py-xxl bg-white">
-          <div className="max-w-container-max mx-auto px-lg text-center mb-xl">
+          <div className="max-w-container-max mx-auto px-md md:px-lg text-center mb-xl">
             <h2 className="text-headline-lg font-headline-lg text-primary mb-md">Engineered for Communities</h2>
             <p className="text-body-lg text-on-surface-variant max-w-2xl mx-auto text-lg">
               Stop managing sales in comment threads. Our tools turn your group into a professional ecosystem.
             </p>
           </div>
-          <div className="max-w-container-max mx-auto px-lg grid md:grid-cols-3 gap-lg">
+          <div className="max-w-container-max mx-auto px-md md:px-lg grid md:grid-cols-3 gap-lg">
             {/* Feature 1 */}
             <div className="p-xl bg-surface-container-low rounded-3xl border border-outline-variant/30 group hover:bg-white hover:shadow-xl transition-all duration-300">
               <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-xl shadow-sm group-hover:scale-110 transition-transform">
@@ -177,7 +243,7 @@ export default function HomePage() {
 
         {/* Social Proof / Marketplace Preview */}
         <section className="py-xxl bg-background">
-          <div className="max-w-container-max mx-auto px-lg">
+          <div className="max-w-container-max mx-auto px-md md:px-lg">
             <div className="flex flex-col md:flex-row justify-between items-end gap-lg mb-xl">
               <div className="text-left">
                 <h2 className="text-headline-lg font-headline-lg text-primary mb-sm">Trusted Marketplace Network</h2>
@@ -192,7 +258,7 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-lg">
               {/* Sample Card 1 */}
               <div className="bg-white rounded-2xl border border-outline-variant/30 overflow-hidden hover:shadow-lg transition-all">
                 <div className="relative">
@@ -275,7 +341,7 @@ export default function HomePage() {
 
         {/* CTA Section */}
         <section className="py-xxl bg-white">
-          <div className="max-w-container-max mx-auto px-lg">
+          <div className="max-w-container-max mx-auto px-md md:px-lg">
             <div className="bg-primary rounded-[40px] p-xl md:p-xxl relative overflow-hidden text-center md:text-left">
               <div className="absolute top-0 right-0 w-1/2 h-full bg-secondary/10 blur-[100px] rounded-full"></div>
               <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-xl">
@@ -296,7 +362,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="bg-primary text-on-primary-container pt-xxl pb-xl border-t border-primary-container">
-        <div className="max-w-container-max mx-auto px-lg grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-xl mb-xxl text-slate-300">
+        <div className="max-w-container-max mx-auto px-md md:px-lg grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-xl mb-xxl text-slate-300">
           <div className="col-span-2">
             <Link className="text-headline-md font-bold text-on-primary mb-lg inline-block text-white" href="/">
               GroupMarket
@@ -314,7 +380,7 @@ export default function HomePage() {
             </div>
           </div>
           <div>
-            <h5 class="text-on-primary font-bold mb-lg text-white">Platform</h5>
+            <h5 className="text-on-primary font-bold mb-lg text-white">Platform</h5>
             <ul className="space-y-md text-label-md text-slate-400">
               <li><Link className="hover:text-on-primary transition-all" href="/marketplace">Browse</Link></li>
               <li><a className="hover:text-on-primary transition-all" href="#">Sync Tech</a></li>
@@ -322,7 +388,7 @@ export default function HomePage() {
             </ul>
           </div>
           <div>
-            <h5 class="text-on-primary font-bold mb-lg text-white">Resources</h5>
+            <h5 className="text-on-primary font-bold mb-lg text-white">Resources</h5>
             <ul className="space-y-md text-label-md text-slate-400">
               <li><a className="hover:text-on-primary transition-all" href="#">How it Works</a></li>
               <li><a className="hover:text-on-primary transition-all" href="#">Admin Guide</a></li>
@@ -330,7 +396,7 @@ export default function HomePage() {
             </ul>
           </div>
           <div>
-            <h5 class="text-on-primary font-bold mb-lg text-white">Company</h5>
+            <h5 className="text-on-primary font-bold mb-lg text-white">Company</h5>
             <ul className="space-y-md text-label-md text-slate-400">
               <li><a className="hover:text-on-primary transition-all" href="#">About Us</a></li>
               <li><a className="hover:text-on-primary transition-all" href="#">Careers</a></li>
@@ -338,7 +404,7 @@ export default function HomePage() {
             </ul>
           </div>
           <div>
-            <h5 class="text-on-primary font-bold mb-lg text-white">Legal</h5>
+            <h5 className="text-on-primary font-bold mb-lg text-white">Legal</h5>
             <ul className="space-y-md text-label-md text-slate-400">
               <li><a className="hover:text-on-primary transition-all" href="#">Privacy</a></li>
               <li><a className="hover:text-on-primary transition-all" href="#">Terms</a></li>
@@ -346,7 +412,7 @@ export default function HomePage() {
             </ul>
           </div>
         </div>
-        <div className="max-w-container-max mx-auto px-lg pt-xl border-t border-primary-container flex flex-col md:flex-row justify-between items-center gap-md text-slate-500 text-sm">
+        <div className="max-w-container-max mx-auto px-md md:px-lg pt-xl border-t border-primary-container flex flex-col md:flex-row justify-between items-center gap-md text-slate-500 text-sm">
           <p className="text-label-sm opacity-50">© 2026 GroupMarket Inc. All rights reserved.</p>
           <div className="flex items-center gap-lg">
             <span className="flex items-center gap-xs text-label-sm text-slate-400">

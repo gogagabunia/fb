@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getDashboardStats, triggerScrapingAction } from '../actions';
 import { getCurrentUser, logoutAction } from '../auth-actions';
+import Sidebar from '../components/sidebar';
 
 interface ScrapingLog {
   id: string;
@@ -104,78 +105,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="flex h-screen overflow-hidden">
-        {/* Sidebar Nav */}
-        <aside className="w-64 bg-surface border-r border-outline-variant/30 flex flex-col p-md gap-xs shrink-0 h-full">
-          <div className="mb-xl px-xs py-sm">
-            <h1 className="text-headline-sm font-bold text-primary">GroupMarket</h1>
-            <p className="text-body-sm text-on-surface-variant font-medium truncate">
-              {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Seller Portal'}
-            </p>
-          </div>
-          <nav className="flex-grow flex flex-col gap-xs">
-            <Link
-              className="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container font-bold rounded-lg transition-all"
-              href="/dashboard"
-            >
-              <span className="material-symbols-outlined">dashboard</span>
-              <span className="text-label-md">Dashboard</span>
-            </Link>
-            <Link
-              className="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all"
-              href="/admin"
-            >
-              <span className="material-symbols-outlined">gavel</span>
-              <span className="text-label-md font-medium">Moderation Queue</span>
-            </Link>
-            <Link
-              className="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all"
-              href="/add-group"
-            >
-              <span className="material-symbols-outlined">groups</span>
-              <span className="text-label-md font-medium">Connected Groups</span>
-            </Link>
-            <Link
-              className="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary rounded-lg transition-all"
-              href="/marketplace"
-            >
-              <span className="material-symbols-outlined">storefront</span>
-              <span className="text-label-md font-medium">View Marketplace</span>
-            </Link>
-          </nav>
-
-          {/* Sync Button */}
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className={`mt-lg mb-md w-full py-md bg-primary text-on-primary rounded-lg text-label-md font-bold shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-xs ${
-              syncing ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-            }`}
-          >
-            <span className={`material-symbols-outlined ${syncing ? 'animate-spin' : ''}`}>sync</span>
-            {syncing ? 'Parsing Posts...' : 'Sync New Posts'}
-          </button>
-
-          <div className="border-t border-outline-variant/30 pt-md flex flex-col gap-xs">
-            <span className="text-[11px] text-slate-400 font-semibold uppercase px-md mb-xs">Database Engine</span>
-            <div className="flex items-center gap-sm px-md py-xs text-xs text-emerald-600 font-bold bg-emerald-50 rounded-lg">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-              Live Serverless DB
-            </div>
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="mt-sm w-full py-sm text-on-surface-variant hover:bg-error-container hover:text-on-error-container rounded-lg text-label-md font-medium transition-all flex items-center justify-center gap-xs"
-              >
-                <span className="material-symbols-outlined text-[18px]">logout</span>
-                Sign Out
-              </button>
-            </form>
-          </div>
-        </aside>
+      <div className="flex flex-col md:flex-row h-screen overflow-hidden">
+        {/* Shared Sidebar */}
+        <Sidebar activePage="dashboard" user={user} onSync={handleSync} syncing={syncing} />
 
         {/* Content Canvas */}
-        <main className="flex-grow p-xl overflow-y-auto max-w-container-max h-full">
+        <main className="flex-grow p-md md:p-xl overflow-y-auto max-w-container-max h-full">
           {/* Header */}
           <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md mb-xl">
             <div>

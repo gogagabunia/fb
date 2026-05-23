@@ -333,3 +333,17 @@ export async function triggerScrapingAction(groupId: string) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Fetch all categories
+ */
+export async function getCategories() {
+  try {
+    return await prisma.category.findMany({
+      orderBy: { name: 'asc' }
+    });
+  } catch (error) {
+    console.error('Failed to get categories:', error);
+    return [];
+  }
+}

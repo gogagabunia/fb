@@ -41,6 +41,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
   const [activeImage, setActiveImage] = useState(imageGallery[0]);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Parse specifications
   const specsObj = (listing.specs && typeof listing.specs === 'object') ? (listing.specs as Record<string, any>) : {};
@@ -78,31 +79,25 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
 
       {/* Top Navigation */}
       <nav className="bg-surface/80 backdrop-blur-md text-primary sticky top-0 z-50 border-b border-outline-variant/30 shadow-sm">
-        <div className="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto h-16">
-          <div className="flex items-center gap-xl">
-            <Link href="/" className="text-headline-md font-bold text-primary">
+        <div className="flex justify-between items-center w-full px-md md:px-lg py-sm max-w-container-max mx-auto h-16">
+          <div className="flex items-center gap-md md:gap-xl">
+            <Link href="/" className="text-title-lg md:text-headline-md font-bold text-primary">
               GroupMarket
             </Link>
             <nav className="hidden md:flex gap-lg items-center">
               <Link className="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="/marketplace">
-                Browse
+                Browse Feed
               </Link>
               <Link className="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="/add-group">
-                Groups
+                Sync Groups
               </Link>
               <Link className="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="/dashboard">
                 Admin Panel
               </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-md">
-            <button className="material-symbols-outlined p-xs hover:bg-surface-container-low rounded-full transition-all text-on-surface-variant">
-              favorite
-            </button>
-            <button className="material-symbols-outlined p-xs hover:bg-surface-container-low rounded-full transition-all text-on-surface-variant">
-              notifications
-            </button>
-            <Link href="/add-group" className="bg-primary text-on-primary px-lg py-xs rounded-lg font-label-md hover:opacity-90 active:scale-[0.98] transition-all">
+          <div className="flex items-center gap-sm md:gap-md">
+            <Link href="/add-group" className="bg-primary text-on-primary px-sm md:px-lg py-1.5 rounded-lg text-xs md:text-label-md font-bold hover:opacity-90 active:scale-[0.98] transition-all">
               List Item
             </Link>
             <Link
@@ -115,14 +110,52 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9ThJLNagGxUr6zXYbmk8Gyhb5Ik8Te58DtM10gaj0ZPRFKu54iJXJ5GObeOhfXAQ5fHMTgJo4wxforvJMBo9CjaFmICBMGUA-HeqqzCQamXQ_GcyaA0VGgg3bXgWruO_PIk8r8KqMEtbU9MY8t21tJxP3w7HfyjYXUDXykBx0B7dRsCObIDBvXeYRx_3E7o60Lo9CFVK6xgs6vvMD_yVhD1wNeWycEwlJsx77I33yZH6JgfTKpoy_k8zSxjW7hpHQ3jqhqRXTf6U"
               />
             </Link>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="md:hidden p-xs text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all"
+              aria-label="Toggle menu"
+            >
+              <span className="material-symbols-outlined text-[24px]">
+                {menuOpen ? 'close' : 'menu'}
+              </span>
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {menuOpen && (
+          <div className="md:hidden absolute top-16 left-0 w-full bg-surface border-b border-outline-variant/30 shadow-lg px-md py-lg z-40 flex flex-col gap-md">
+            <nav className="flex flex-col gap-sm">
+              <Link
+                onClick={() => setMenuOpen(false)}
+                className="text-primary font-bold text-headline-sm hover:text-secondary transition-colors py-xs"
+                href="/marketplace"
+              >
+                Browse Feed
+              </Link>
+              <Link
+                onClick={() => setMenuOpen(false)}
+                className="text-on-surface-variant text-headline-sm hover:text-primary transition-colors py-xs"
+                href="/add-group"
+              >
+                Sync Groups
+              </Link>
+              <Link
+                onClick={() => setMenuOpen(false)}
+                className="text-on-surface-variant text-headline-sm hover:text-primary transition-colors py-xs"
+                href="/dashboard"
+              >
+                Admin Panel
+              </Link>
+            </nav>
+          </div>
+        )}
       </nav>
 
       {/* Main Content */}
       <main className="max-w-container-max mx-auto px-md md:px-lg py-xl">
         {/* Breadcrumb & Action Row */}
-        <div className="flex justify-between items-center mb-lg">
+        <div className="flex flex-col sm:flex-row gap-md justify-between sm:items-center mb-lg">
           <div className="flex items-center gap-xs text-on-surface-variant font-label-md text-label-md">
             <Link className="hover:text-primary" href="/dashboard">Home</Link>
             <span className="material-symbols-outlined text-[16px]">chevron_right</span>
@@ -156,7 +189,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
         </div>
 
         {/* Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-xxl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-lg md:gap-xxl">
           {/* Left Column: Gallery & Description */}
           <div className="lg:col-span-7 space-y-md">
             {/* Big Main Image */}
@@ -169,7 +202,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
             </div>
             {/* Gallery Thumbnails */}
             {imageGallery.length > 1 && (
-              <div className="grid grid-cols-4 gap-md">
+              <div className="grid grid-cols-4 gap-sm md:gap-md">
                 {imageGallery.slice(0, 4).map((img, idx) => (
                   <button
                     key={idx}
@@ -199,7 +232,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
               {/* Price & Title Card */}
               <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm">
                 <div className="flex justify-between items-start mb-xs">
-                  <span className="text-display-lg font-display-lg text-primary">{formattedPrice}</span>
+                  <span className="text-headline-lg md:text-display-lg font-bold text-primary">{formattedPrice}</span>
                   <span className="bg-secondary-container text-on-secondary-container px-sm py-1 rounded-full font-label-sm text-label-sm">
                     {listing.isActive ? 'Active' : 'Archived'}
                   </span>
@@ -216,7 +249,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
 
                 {/* Specs Grid */}
                 {listing.category.toLowerCase() === 'vehicles' ? (
-                  <div className="grid grid-cols-2 gap-md mb-xl">
+                  <div className="grid grid-cols-2 gap-sm md:gap-md mb-xl">
                     <div className="bg-surface-container-low p-md rounded-lg">
                       <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Year</span>
                       <span className="font-headline-sm text-headline-sm">{year}</span>
@@ -235,7 +268,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-md mb-xl">
+                  <div className="grid grid-cols-2 gap-sm md:gap-md mb-xl">
                     <div className="bg-surface-container-low p-md rounded-lg col-span-2">
                       <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Category</span>
                       <span className="font-headline-sm text-headline-sm capitalize">{listing.category}</span>
@@ -378,7 +411,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
 
       {/* Footer */}
       <footer className="bg-surface-container-lowest border-t border-outline-variant/30 py-xxl mt-xxl">
-        <div className="max-w-container-max mx-auto px-lg grid grid-cols-1 md:grid-cols-4 gap-xl">
+        <div className="max-w-container-max mx-auto px-md md:px-lg grid grid-cols-1 md:grid-cols-4 gap-xl">
           <div className="col-span-2">
             <span className="text-headline-md font-headline-md font-bold text-primary mb-md block">GroupMarket</span>
             <p className="text-on-surface-variant font-body-md text-body-md max-w-md">
@@ -388,8 +421,8 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
           <div>
             <h5 className="font-headline-sm text-headline-sm mb-md">Marketplace</h5>
             <ul className="space-y-sm text-on-surface-variant font-body-sm text-body-sm">
-              <li><Link className="hover:text-primary transition-colors" href="/marketplace">Browse Vehicles</Link></li>
-              <li><Link className="hover:text-primary transition-colors" href="/add-group">Group Collections</Link></li>
+              <li><Link className="hover:text-primary transition-colors" href="/marketplace">Browse Feed</Link></li>
+              <li><Link className="hover:text-primary transition-colors" href="/add-group">Sync Groups</Link></li>
               <li><Link className="hover:text-primary transition-colors" href="/dashboard">Seller Dashboard</Link></li>
             </ul>
           </div>

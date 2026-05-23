@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { connectFacebookGroup, triggerScrapingAction } from '../actions';
+import { getCurrentUser } from '../auth-actions';
+import Sidebar from '../components/sidebar';
 
 export default function AddGroupWizardPage() {
   const [step, setStep] = useState(1);
@@ -17,6 +19,19 @@ export default function AddGroupWizardPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [user, setUser] = useState<{ firstName: string | null; lastName: string | null; email: string } | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser as any);
+      } catch (error) {
+        console.error('Failed to get current user:', error);
+      }
+    }
+    loadUser();
+  }, []);
 
   function showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
     setToast({ message, type });
@@ -149,48 +164,13 @@ export default function AddGroupWizardPage() {
         </div>
       )}
 
-      {/* Navigation Header */}
-      <header className="bg-surface/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/30 shadow-sm">
-        <div className="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto h-16">
-          <div className="flex items-center gap-md">
-            <button
-              onClick={() => window.history.back()}
-              className="p-xs hover:bg-surface-container-high rounded-full transition-colors flex items-center justify-center text-on-surface-variant"
-            >
-              <span className="material-symbols-outlined">arrow_back</span>
-            </button>
-            <Link href="/" className="text-headline-md font-bold text-primary">
-              GroupMarket
-            </Link>
-          </div>
-          <div className="hidden md:flex items-center gap-lg">
-            <nav className="flex gap-md">
-              <Link className="text-label-md text-on-surface-variant hover:text-primary transition-colors" href="/marketplace">
-                Browse Feed
-              </Link>
-              <Link className="text-label-md text-primary border-b-2 border-primary pb-1" href="/add-group">
-                Sync Groups
-              </Link>
-              <Link className="text-label-md text-on-surface-variant hover:text-primary transition-colors" href="/dashboard">
-                Admin Panel
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-sm">
-            <span className="material-symbols-outlined text-on-surface-variant p-xs">notifications</span>
-            <div className="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
-              <img
-                alt="User"
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9ThJLNagGxUr6zXYbmk8Gyhb5Ik8Te58DtM10gaj0ZPRFKu54iJXJ5GObeOhfXAQ5fHMTgJo4wxforvJMBo9CjaFmICBMGUA-HeqqzCQamXQ_GcyaA0VGgg3bXgWruO_PIk8r8KqMEtbU9MY8t21tJxP3w7HfyjYXUDXykBx0B7dRsCObIDBvXeYRx_3E7o60Lo9CFVK6xgs6vvMD_yVhD1wNeWycEwlJsx77I33yZH6JgfTKpoy_k8zSxjW7hpHQ3jqhqRXTf6U"
-              />
-            </div>
-          </div>
-        </div>
-      </header>
+      <div className="flex flex-col md:flex-row h-screen overflow-hidden">
+        {/* Shared Sidebar */}
+        <Sidebar activePage="add-group" user={user} />
 
-      {/* Main Wizard Form Container */}
-      <main className="max-w-xl mx-auto px-md py-xxl">
+        {/* Content Canvas */}
+        <main className="flex-grow p-md md:p-xl overflow-y-auto max-w-container-max h-full flex flex-col items-center">
+          <div className="w-full max-w-xl py-lg">
         {/* Step Indicator Header */}
         <div className="mb-xl">
           <div className="flex justify-between items-center relative">
@@ -457,7 +437,9 @@ export default function AddGroupWizardPage() {
             )}
           </div>
         </div>
+        </div>
       </main>
+      </div>
     </div>
   );
 }
