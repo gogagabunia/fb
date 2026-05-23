@@ -12,7 +12,7 @@
     "lint": "turbo run lint",
     "db:generate": "npx prisma generate --schema=packages/database/prisma/schema.prisma",
     "db:migrate": "npx prisma db push --schema=packages/database/prisma/schema.prisma",
-    "test:ingest": "ts-node scripts/test-ingestion.ts"
+    "test:ingest": "node --env-file=.env -r ts-node/register scripts/test-ingestion.ts"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
