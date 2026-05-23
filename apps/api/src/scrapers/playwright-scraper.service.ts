@@ -30,29 +30,28 @@ export class PlaywrightScraperService {
 
     this.logger.log(`Starting scrape task for group: ${group.name} (${group.url})`);
     
-    // Launch headless chromium with anti-fingerprinting parameters
-    const browser = await chromium.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-blink-features=AutomationControlled'
-      ]
-    });
-
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 800 }
-    });
-
-    // Option: Load cookies from custom configuration if stored in Postgres/Redis
-    // await context.addCookies(savedCookies);
-
-    const page = await context.newPage();
+    let browser: any = null;
     const scrapedItems: any[] = [];
 
     try {
+      // Launch headless chromium with anti-fingerprinting parameters
+      browser = await chromium.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-blink-features=AutomationControlled'
+        ]
+      });
+
+      const context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        viewport: { width: 1280, height: 800 }
+      });
+
+      const page = await context.newPage();
+
       // Go to group discussion page
       this.logger.log(`Navigating to group URL: ${group.url}`);
       await page.goto(group.url, { waitUntil: 'networkidle', timeout: 30000 });
@@ -178,7 +177,9 @@ export class PlaywrightScraperService {
         }
       });
     } finally {
-      await browser.close();
+      if (browser) {
+        await browser.close();
+      }
     }
 
     return scrapedItems;
