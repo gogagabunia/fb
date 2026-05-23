@@ -3,6 +3,7 @@
 import { PrismaClient } from 'database';
 import { hashPassword, verifyPassword, createSession, destroySession, getSession } from './lib/auth';
 import { redirect } from 'next/navigation';
+import { authRateLimiter } from './lib/rate-limiter';
 
 const prisma = new PrismaClient();
 
@@ -19,6 +20,13 @@ export async function registerAction(formData: FormData) {
   // Validation
   if (!email || !password || !firstName) {
     return { error: 'Please fill in all required fields.' };
+  }
+
+  // Rate Limiting Check
+  const limitKey = `register:${email.toLowerCase().trim()}`;
+  const rateLimit = authRateLimiter.limit(limitKey);
+  if (!rateLimit.success) {
+    return { error: `Too many registration attempts. Please try again in ${Math.ceil(rateLimit.resetMs / 1000)} seconds.` };
   }
 
   if (password.length < 6) {
@@ -65,6 +73,13 @@ export async function loginAction(formData: FormData) {
 
   if (!email || !password) {
     return { error: 'Please enter your email and password.' };
+  }
+
+  // Rate Limiting Check
+  const limitKey = `login:${email.toLowerCase().trim()}`;
+  const rateLimit = authRateLimiter.limit(limitKey);
+  if (!rateLimit.success) {
+    return { error: `Too many login attempts. Please try again in ${Math.ceil(rateLimit.resetMs / 1000)} seconds.` };
   }
 
   const user = await prisma.user.findUnique({

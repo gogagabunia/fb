@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getFavoritedIdsAction, toggleFavoriteAction } from '../../actions';
+import { getFavoritedIdsAction, toggleFavoriteAction, recordAnalyticsEventAction } from '../../actions';
 
 interface Listing {
   id: string;
@@ -45,6 +45,40 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
   const [toastType, setToastType] = useState<'success' | 'info'>('success');
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [promotedState, setPromotedState] = useState(false);
+  const [promoting, setPromoting] = useState(false);
+
+  // Handle successful promotion checkout query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') === 'success') {
+      setPromotedState(true);
+      setToastType('success');
+      setToastMessage('Listing promoted successfully! Now featured.');
+      setTimeout(() => setToastMessage(null), 4000);
+    }
+  }, []);
+
+  const handlePromote = async () => {
+    setPromoting(true);
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId: listing.id })
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('Failed to create checkout session:', data.error);
+        setPromoting(false);
+      }
+    } catch (err) {
+      console.error('Promotion failed:', err);
+      setPromoting(false);
+    }
+  };
 
   // Fetch favorite state on load
   useEffect(() => {
@@ -59,6 +93,13 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
       }
     }
     checkSavedState();
+  }, [listing.id]);
+
+  // Track page views in PostgreSQL telemetry
+  useEffect(() => {
+    recordAnalyticsEventAction(listing.id, 'VIEW').catch(err =>
+      console.error('Failed to log views analytics event:', err)
+    );
   }, [listing.id]);
 
   const handleToggleFavorite = async () => {
@@ -330,6 +371,9 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                     href={listing.contactUrl || '#'}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => {
+                      recordAnalyticsEventAction(listing.id, 'CONTACT_CLICK').catch(console.error);
+                    }}
                     className="w-full bg-primary text-on-primary py-md rounded-lg font-headline-sm text-headline-sm hover:opacity-95 transition-all flex items-center justify-center gap-md active:scale-[0.98]"
                   >
                     <span className="material-symbols-outlined">mail</span> Contact Seller
@@ -338,6 +382,9 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                     href={listing.originalPostUrl || '#'}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => {
+                      recordAnalyticsEventAction(listing.id, 'FB_CLICK').catch(console.error);
+                    }}
                     className="w-full bg-surface-container-high text-primary py-md rounded-lg font-headline-sm text-headline-sm hover:bg-surface-container-highest transition-all flex items-center justify-center gap-md active:scale-[0.98]"
                   >
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -378,6 +425,35 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                 >
                   View Other Listings
                 </Link>
+              </div>
+
+              {/* Promotion Monetization Card */}
+              <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-secondary-container text-on-secondary-container text-[10px] px-sm py-1 rounded-bl-lg font-extrabold tracking-wider">
+                  SPONSOR
+                </div>
+                <h3 className="font-bold text-title-md text-primary flex items-center gap-xs mb-xs">
+                  <span className="material-symbols-outlined text-secondary">workspace_premium</span>
+                  Promote Listing
+                </h3>
+                <p className="text-body-xs text-on-surface-variant leading-relaxed mb-md">
+                  Boost your listing's visibility! Make it featured to place it in the asymmetric bento grid at the top of the Marketplace.
+                </p>
+                {listing.isFeatured || promotedState ? (
+                  <div className="flex items-center gap-xs py-sm justify-center bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-label-sm font-bold">
+                    <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
+                    Featured Listing Active
+                  </div>
+                ) : (
+                  <button
+                    onClick={handlePromote}
+                    disabled={promoting}
+                    className="w-full bg-secondary text-on-secondary py-sm rounded-lg text-label-sm font-bold hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-xs shadow"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">{promoting ? 'sync' : 'bolt'}</span>
+                    {promoting ? 'Redirecting...' : 'Promote for $19.99'}
+                  </button>
+                )}
               </div>
 
               {/* Topographic Map Card */}

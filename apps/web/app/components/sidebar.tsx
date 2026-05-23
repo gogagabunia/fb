@@ -22,6 +22,7 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
 
   const navLinks = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/dashboard' },
+    { id: 'analytics', label: 'Analytics Panel', icon: 'analytics', href: '/dashboard/analytics' },
     { id: 'admin', label: 'Moderation Queue', icon: 'gavel', href: '/admin' },
     { id: 'add-group', label: 'Connected Groups', icon: 'groups', href: '/add-group' },
     { id: 'favorites', label: 'Saved Listings', icon: 'favorite', href: '/favorites' },

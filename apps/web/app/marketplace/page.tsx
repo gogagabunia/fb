@@ -104,8 +104,11 @@ export default function MarketplacePage() {
       }
     });
 
-  // Top featured items: select first few vehicles or items
-  const featuredItems = listings.filter((l) => l.price > 10000).slice(0, 2);
+  // Bento featured items: select database-marked featured listings, falling back to highest-price listings
+  const dbFeatured = listings.filter((l) => l.isFeatured);
+  const featuredItems = dbFeatured.length >= 2 
+    ? dbFeatured.slice(0, 2) 
+    : [...dbFeatured, ...listings.filter((l) => !l.isFeatured && l.price > 10000)].slice(0, 2);
   const mainFeatured = featuredItems[0];
   const sideFeatured = featuredItems[1];
 

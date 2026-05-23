@@ -94,6 +94,9 @@ model Listing {
   contactUrl     String
   isActive       Boolean          @default(true)
   viewsCount     Int              @default(0)
+  clicksCount    Int              @default(0)
+  isFeatured     Boolean          @default(false)
+  featuredUntil  DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
@@ -105,6 +108,7 @@ model Listing {
   categoryRel    Category         @relation(fields: [categoryId], references: [id])
   tags           Tag[]            @relation("ListingTags")
   savedBy        SavedListing[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 model Category {
@@ -142,4 +146,12 @@ model SavedListing {
   createdAt DateTime @default(now())
 
   @@unique([userId, listingId])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  event     String   // "VIEW", "CONTACT_CLICK", "FB_CLICK"
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

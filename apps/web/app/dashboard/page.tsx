@@ -120,13 +120,22 @@ export default function DashboardPage() {
                 Welcome to your GroupMarket admin hub. Monitor scraped updates and approvals here.
               </p>
             </div>
-            <Link
-              href="/add-group"
-              className="bg-secondary text-on-secondary px-xl py-md rounded-xl font-bold flex items-center gap-sm shadow-md hover:shadow-lg transition-all active:scale-95"
-            >
-              <span className="material-symbols-outlined">add_circle</span>
-              Add New Facebook Group
-            </Link>
+            <div className="flex flex-wrap gap-sm">
+              <Link
+                href="/dashboard/analytics"
+                className="bg-primary text-on-primary px-xl py-md rounded-xl font-bold flex items-center gap-sm shadow-md hover:shadow-lg transition-all active:scale-95 text-label-md"
+              >
+                <span className="material-symbols-outlined">analytics</span>
+                View Analytics
+              </Link>
+              <Link
+                href="/add-group"
+                className="bg-secondary text-on-secondary px-xl py-md rounded-xl font-bold flex items-center gap-sm shadow-md hover:shadow-lg transition-all active:scale-95 text-label-md"
+              >
+                <span className="material-symbols-outlined">add_circle</span>
+                Add New Facebook Group
+              </Link>
+            </div>
           </header>
 
           {loading ? (
