@@ -58,6 +58,18 @@ export class PlaywrightScraperService {
         viewport: { width: 1280, height: 800 }
       });
 
+      // Inject Facebook Session Cookies to authenticate automated scrapers
+      const fbCookiesRaw = process.env.FB_COOKIES;
+      if (fbCookiesRaw) {
+        try {
+          const cookies = JSON.parse(fbCookiesRaw);
+          await context.addCookies(cookies);
+          this.logger.log('Successfully injected Facebook session cookies to session context.');
+        } catch (e: any) {
+          this.logger.error('Failed to parse or inject Facebook cookies: ' + e.message);
+        }
+      }
+
       const page = await context.newPage();
 
       // Go to group discussion page
