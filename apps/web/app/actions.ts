@@ -653,3 +653,45 @@ export async function ingestRawTextAction(groupId: string, rawText: string) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Update connected Facebook Group details
+ */
+export async function updateFacebookGroupAction(id: string, data: { name: string; url: string; keywords: string[] }) {
+  try {
+    const updated = await prisma.facebookGroup.update({
+      where: { id },
+      data: {
+        name: data.name,
+        url: data.url,
+        keywords: data.keywords
+      }
+    });
+
+    revalidatePath('/dashboard');
+    revalidatePath('/add-group');
+    return { success: true, group: updated };
+  } catch (error: any) {
+    console.error('Failed to update Facebook group:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Safely disconnect / delete Facebook Group from platform (cascades raw posts & logs)
+ */
+export async function disconnectFacebookGroupAction(id: string) {
+  try {
+    await prisma.facebookGroup.delete({
+      where: { id }
+    });
+
+    revalidatePath('/dashboard');
+    revalidatePath('/add-group');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to disconnect Facebook group:', error);
+    return { success: false, error: error.message };
+  }
+}
+
