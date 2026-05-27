@@ -35,25 +35,55 @@ export class OpenAIParserService {
   }
 
   /**
-   * Leverages GPT-4o mini structured output format to parse scraped texts,
-   * falling back immediately to a rich local regex parser if a mock key is used.
+   * Main parsing orchestrator:
+   * 1. If GEMINI_API_KEY is present, runs Google Gemini 1.5 Flash (Free Tier / $300 Credits).
+   * 2. If GEMINI is missing or fails, falls back immediately to OpenAI GPT-4o mini.
+   * 3. If OpenAI is missing or fails, engages local Regex/Code heuristics fallback.
    */
   async parseRawPost(rawText: string): Promise<ExtractedListing> {
-    if (this.isMockKey) {
-      this.logger.log('OpenAI API Key is placeholder/empty. Engaging high-fidelity local regex parser...');
-      return this.runLocalParserFallback(rawText);
+    const geminiKey = process.env.GEMINI_API_KEY || '';
+    const hasGemini = geminiKey && !geminiKey.includes('placeholder') && !geminiKey.includes('mock-key') && geminiKey !== '';
+
+    if (hasGemini) {
+      try {
+        return await this.parseRawPostWithGemini(rawText, geminiKey);
+      } catch (geminiError: any) {
+        this.logger.error(`Gemini extraction failed: ${geminiError?.message || geminiError}. Trying OpenAI...`);
+      }
     }
 
-    try {
-      this.logger.log('Sending post text to OpenAI for classification & structured extraction...');
-      
-      const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        response_format: { type: 'json_object' },
-        messages: [
+    // Fall back to OpenAI
+    if (!this.isMockKey) {
+      try {
+        return await this.parseRawPostWithOpenAI(rawText);
+      } catch (openAiError: any) {
+        this.logger.error(`OpenAI extraction failed: ${openAiError?.message || openAiError}. Trying Regex...`);
+      }
+    }
+
+    // Ultimate secure fallback
+    this.logger.log('Engaging high-fidelity local regex parser safety shield...');
+    return this.runLocalParserFallback(rawText);
+  }
+
+  /**
+   * Google Gemini 1.5 Flash (AI Studio) Structured Extraction
+   */
+  async parseRawPostWithGemini(rawText: string, geminiKey: string): Promise<ExtractedListing> {
+    this.logger.log('Sending post text to Google Gemini (AI Studio) for structured extraction...');
+    
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
           {
-            role: 'system',
-            content: `You are a highly advanced classified ads extractor.
+            role: 'user',
+            parts: [
+              {
+                text: `You are a highly advanced classified ads extractor.
 Analyze the raw social media text. Identify if it is a selling post (classified ad).
 If it is NOT a selling post (e.g. general discussion, query, recommendation request), return {"isListing": false}.
 Otherwise, return a structured listing with the schema:
@@ -64,7 +94,63 @@ Otherwise, return a structured listing with the schema:
   "price": 12500, // float value or null if not specified
   "location": "City, State or area name",
   "description": "Clean, grammatical summary of the features and details",
-  "specs": { // key-value pairs depending on category
+  "specs": {
+    "make": "Honda",
+    "model": "Accord",
+    "year": 2018,
+    "transmission": "Automatic",
+    "mileage": 45000
+  }
+}
+
+Social media text:
+${rawText}`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API returned status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const result = JSON.parse(text);
+    
+    this.logger.log(`Gemini parsing complete. isListing: ${result.isListing}`);
+    return result as ExtractedListing;
+  }
+
+  /**
+   * OpenAI GPT-4o mini Structured Extraction
+   */
+  async parseRawPostWithOpenAI(rawText: string): Promise<ExtractedListing> {
+    this.logger.log('Sending post text to OpenAI for classification & structured extraction...');
+    
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: `You are a highly advanced classified ads extractor.
+Analyze the raw social media text. Identify if it is a selling post (classified ad).
+If it is NOT a selling post (e.g. general discussion, query, recommendation request), return {"isListing": false}.
+Otherwise, return a structured listing with the schema:
+{
+  "isListing": true,
+  "category": "Vehicles" | "Electronics" | "Real Estate" | "General",
+  "title": "Clean, short, catchy title summarizing the item",
+  "price": 12500, // float value or null if not specified
+  "location": "City, State or area name",
+  "description": "Clean, grammatical summary of the features and details",
+  "specs": {
     "make": "Honda",
     "model": "Accord",
     "year": 2018,
@@ -72,23 +158,18 @@ Otherwise, return a structured listing with the schema:
     "mileage": 45000
   }
 }`
-          },
-          {
-            role: 'user',
-            content: rawText
-          }
-        ],
-        temperature: 0.1
-      });
+        },
+        {
+          role: 'user',
+          content: rawText
+        }
+      ],
+      temperature: 0.1
+    });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
-      this.logger.log(`OpenAI parsing complete. isListing: ${result.isListing}`);
-      return result as ExtractedListing;
-
-    } catch (error: any) {
-      this.logger.error(`OpenAI processing error: ${error?.message || error}. Falling back to local parser.`);
-      return this.runLocalParserFallback(rawText);
-    }
+    const result = JSON.parse(response.choices[0].message.content || '{}');
+    this.logger.log(`OpenAI parsing complete. isListing: ${result.isListing}`);
+    return result as ExtractedListing;
   }
 
   /**
