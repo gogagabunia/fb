@@ -95,7 +95,7 @@ export class PlaywrightScraperService {
 
       for (const element of postElements.slice(0, maxPosts)) {
         try {
-          const rawText = await element.evaluate(el => el.textContent || '');
+          const rawText = await element.evaluate((el: any) => el.textContent || '');
           
           // Basic keyword filter to only pull potential selling posts
           const watchKeywords = group.keywords.length > 0 ? group.keywords : ['sell', 'price', 'sale', 'usd', '$', 'car', 'mile', 'runs', 'clean'];
@@ -106,7 +106,7 @@ export class PlaywrightScraperService {
           }
 
           // Scrape adjacent images
-          const parentPostContainer = await element.evaluateHandle(el => el.closest('div[role="article"]') || el.parentElement);
+          const parentPostContainer = await element.evaluateHandle((el: any) => el.closest('div[role="article"]') || el.parentElement);
           const imageUrls: string[] = [];
           if (parentPostContainer) {
             const images = await parentPostContainer.asElement()?.$$('img');

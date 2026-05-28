@@ -36,11 +36,13 @@ export class OpenAIParserService {
 
   /**
    * Main parsing orchestrator:
-   * 1. If GEMINI_API_KEY is present, runs Google Gemini 1.5 Flash (Free Tier / $300 Credits).
-   * 2. If GEMINI is missing or fails, falls back immediately to OpenAI GPT-4o mini.
-   * 3. If OpenAI is missing or fails, engages local Regex/Code heuristics fallback.
+   * 1. If GEMINI_API_KEY is present, runs Google Gemini 2.5 Flash (Free Tier).
+   * 2. If GROQ_API_KEY is present, runs Meta Llama 3.1 8B (via Groq API - Ultra-fast Free Tier).
+   * 3. If GROQ/Gemini fail or are missing, falls back immediately to OpenAI GPT-4o mini.
+   * 4. If all APIs fail or are unconfigured, engages local Regex/Code heuristics fallback.
    */
   async parseRawPost(rawText: string): Promise<ExtractedListing> {
+    // 1. Google Gemini
     const geminiKey = process.env.GEMINI_API_KEY || '';
     const hasGemini = geminiKey && !geminiKey.includes('placeholder') && !geminiKey.includes('mock-key') && geminiKey !== '';
 
@@ -48,11 +50,23 @@ export class OpenAIParserService {
       try {
         return await this.parseRawPostWithGemini(rawText, geminiKey);
       } catch (geminiError: any) {
-        this.logger.error(`Gemini extraction failed: ${geminiError?.message || geminiError}. Trying OpenAI...`);
+        this.logger.error(`Gemini extraction failed: ${geminiError?.message || geminiError}. Trying Groq Llama...`);
       }
     }
 
-    // Fall back to OpenAI
+    // 2. Meta Llama via Groq
+    const groqKey = process.env.GROQ_API_KEY || '';
+    const hasGroq = groqKey && !groqKey.includes('placeholder') && !groqKey.includes('mock-key') && groqKey !== '';
+
+    if (hasGroq) {
+      try {
+        return await this.parseRawPostWithGroq(rawText, groqKey);
+      } catch (groqError: any) {
+        this.logger.error(`Groq Llama extraction failed: ${groqError?.message || groqError}. Trying OpenAI...`);
+      }
+    }
+
+    // 3. OpenAI GPT-4o mini
     if (!this.isMockKey) {
       try {
         return await this.parseRawPostWithOpenAI(rawText);
@@ -67,12 +81,74 @@ export class OpenAIParserService {
   }
 
   /**
-   * Google Gemini 1.5 Flash (AI Studio) Structured Extraction
+   * Meta Llama 3.1 8B (Groq API) Structured Extraction
+   */
+  async parseRawPostWithGroq(rawText: string, groqKey: string): Promise<ExtractedListing> {
+    this.logger.log('Sending post text to Groq (Llama 3.1) for structured extraction...');
+    
+    const url = 'https://api.groq.com/openai/v1/chat/completions';
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `You are a highly advanced classified ads extractor.
+Analyze the raw social media text. Identify if it is a selling post (classified ad).
+If it is NOT a selling post (e.g. general discussion, query, recommendation request), return {"isListing": false}.
+Otherwise, return a structured listing with the schema:
+{
+  "isListing": true,
+  "category": "Vehicles" | "Electronics" | "Real Estate" | "General",
+  "title": "Clean, short, catchy title summarizing the item",
+  "price": 12500, // float value or null if not specified
+  "location": "City, State or area name",
+  "description": "Clean, grammatical summary of the features and details",
+  "specs": {
+    "make": "Honda",
+    "model": "Accord",
+    "year": 2018,
+    "transmission": "Automatic",
+    "mileage": 45000
+  }
+}`
+          },
+          {
+            role: 'user',
+            content: rawText
+          }
+        ],
+        temperature: 0.1
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Groq API returned status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || '{}';
+    const result = JSON.parse(text);
+    
+    this.logger.log(`Groq Llama parsing complete. isListing: ${result.isListing}`);
+    return result as ExtractedListing;
+  }
+
+
+  /**
+   * Google Gemini 2.5 Flash (AI Studio) Structured Extraction
    */
   async parseRawPostWithGemini(rawText: string, geminiKey: string): Promise<ExtractedListing> {
     this.logger.log('Sending post text to Google Gemini (AI Studio) for structured extraction...');
     
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
     
     const response = await fetch(url, {
       method: 'POST',
