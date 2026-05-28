@@ -100,7 +100,7 @@ export class OpenAIParserService {
         messages: [
           {
             role: 'system',
-            content: `You are a highly advanced classified ads extractor.
+            content: `You are a highly advanced classified ads extractor that outputs structured JSON.
 Analyze the raw social media text. Identify if it is a selling post (classified ad).
 If it is NOT a selling post (e.g. general discussion, query, recommendation request), return {"isListing": false}.
 Otherwise, return a structured listing with the schema:
@@ -130,7 +130,8 @@ Otherwise, return a structured listing with the schema:
     });
 
     if (!response.ok) {
-      throw new Error(`Groq API returned status ${response.status}`);
+      const errText = await response.text();
+      throw new Error(`Groq API returned status ${response.status}: ${errText}`);
     }
 
     const data = await response.json();
