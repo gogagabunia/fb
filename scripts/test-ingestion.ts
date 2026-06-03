@@ -27,16 +27,16 @@ async function main() {
     console.log(`✅ Admin User active: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
 
     // 2. Provision / Verify Mock Facebook Group
-    console.log('👥 Verifying test Scottsdale Cars & Classifieds Facebook Group...');
+    console.log('👥 Verifying test Facebook Group from user...');
     const group = await prisma.facebookGroup.upsert({
-      where: { groupId: '123456789' },
+      where: { groupId: '531451220380265' },
       update: {
         keywords: ['car', 'sell', 'price', '$', 'keyboard', 'headphones', 'iphone', 'sale', 'asking', 'runs', 'clean']
       },
       create: {
-        groupId: '123456789',
-        name: 'Scottsdale Cars & Classifieds',
-        url: 'https://facebook.com/groups/scottsdale-classifieds',
+        groupId: '531451220380265',
+        name: 'User Group',
+        url: 'https://www.facebook.com/groups/531451220380265',
         isPublic: true,
         isActive: true,
         keywords: ['car', 'sell', 'price', '$', 'keyboard', 'headphones', 'iphone', 'sale', 'asking', 'runs', 'clean'],

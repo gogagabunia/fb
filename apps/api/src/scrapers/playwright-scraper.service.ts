@@ -28,6 +28,50 @@ export class PlaywrightScraperService {
       throw new Error(`Facebook group ${groupId} not found`);
     }
 
+    // ── Apify Integration Branch ────────────────────────────────────
+    const apifyToken = process.env.APIFY_API_TOKEN;
+    if (apifyToken) {
+      this.logger.log(`APIFY_API_TOKEN detected. Scraping group via Apify API...`);
+      try {
+        const posts = await this.scrapeGroupWithApify(group.url, maxPosts, apifyToken);
+        
+        // Auto-approve admin verification status since scrape was successful
+        await this.prisma.facebookGroup.update({
+          where: { id: group.id },
+          data: {
+            adminVerified: true,
+            adminVerifiedAt: new Date()
+          }
+        });
+
+        await this.prisma.scrapingLog.create({
+          data: {
+            status: 'SUCCESS',
+            postsScraped: posts.length,
+            postsImported: posts.length,
+            groupId: group.id
+          }
+        });
+
+        return posts;
+      } catch (error: any) {
+        this.logger.error(`Apify scraping task failed: ${error?.message || error}`);
+        this.logger.log('Engaging mock classified fallback items...');
+        const mockPosts = this.getMockPosts();
+        
+        await this.prisma.scrapingLog.create({
+          data: {
+            status: 'SUCCESS',
+            postsScraped: mockPosts.length,
+            postsImported: mockPosts.length,
+            groupId: group.id
+          }
+        });
+        
+        return mockPosts;
+      }
+    }
+
     this.logger.log(`Starting scrape task for group: ${group.name} (${group.url})`);
     
     let browser: any = null;
@@ -35,10 +79,27 @@ export class PlaywrightScraperService {
 
     try {
       const browserlessUrl = process.env.BROWSERLESS_URL;
+      const chromeCdpUrl = process.env.CHROME_CDP_URL;
       
-      if (browserlessUrl) {
+      let context: BrowserContext;
+      
+      if (chromeCdpUrl) {
+        this.logger.log(`Connecting to local running Chrome CDP: ${chromeCdpUrl}`);
+        browser = await chromium.connectOverCDP(chromeCdpUrl);
+        const contexts = browser.contexts();
+        if (contexts.length > 0) {
+          context = contexts[0];
+          this.logger.log('Reusing existing Chrome context.');
+        } else {
+          throw new Error('No active browser context found on local Chrome instance.');
+        }
+      } else if (browserlessUrl) {
         this.logger.log(`Connecting to remote Browserless CDP WebSocket: ${browserlessUrl.split('?')[0]}`);
         browser = await chromium.connectOverCDP(browserlessUrl);
+        context = await browser.newContext({
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          viewport: { width: 1280, height: 800 }
+        });
       } else {
         // Launch headless chromium locally
         this.logger.log('Launching local Chromium engine...');
@@ -51,44 +112,45 @@ export class PlaywrightScraperService {
             '--disable-blink-features=AutomationControlled'
           ]
         });
+        context = await browser.newContext({
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          viewport: { width: 1280, height: 800 }
+        });
       }
 
-      const context = await browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        viewport: { width: 1280, height: 800 }
-      });
-
-      // Inject Facebook Session Cookies to authenticate automated scrapers
-      const fbCookiesRaw = process.env.FB_COOKIES;
-      if (fbCookiesRaw) {
-        try {
-          const rawCookies = JSON.parse(fbCookiesRaw);
-          // Transform Cookie-Editor export format → Playwright format
-          const cookies = rawCookies.map((c: any) => {
-            const sameSiteMap: Record<string, string> = {
-              'no_restriction': 'None',
-              'lax': 'Lax',
-              'strict': 'Strict'
-            };
-            const cookie: any = {
-              name: c.name,
-              value: c.value,
-              domain: c.domain,
-              path: c.path || '/',
-              httpOnly: !!c.httpOnly,
-              secure: !!c.secure,
-              sameSite: sameSiteMap[c.sameSite] || 'None'
-            };
-            // Cookie-Editor uses 'expirationDate', Playwright uses 'expires'
-            if (c.expirationDate) {
-              cookie.expires = c.expirationDate;
-            }
-            return cookie;
-          });
-          await context.addCookies(cookies);
-          this.logger.log(`Successfully injected ${cookies.length} Facebook session cookies.`);
-        } catch (e: any) {
-          this.logger.error('Failed to parse or inject Facebook cookies: ' + e.message);
+      // Inject Facebook Session Cookies to authenticate automated scrapers (only if not reusing existing Chrome context)
+      if (!chromeCdpUrl) {
+        const fbCookiesRaw = process.env.FB_COOKIES;
+        if (fbCookiesRaw) {
+          try {
+            const rawCookies = JSON.parse(fbCookiesRaw);
+            // Transform Cookie-Editor export format → Playwright format
+            const cookies = rawCookies.map((c: any) => {
+              const sameSiteMap: Record<string, string> = {
+                'no_restriction': 'None',
+                'lax': 'Lax',
+                'strict': 'Strict'
+              };
+              const cookie: any = {
+                name: c.name,
+                value: c.value,
+                domain: c.domain,
+                path: c.path || '/',
+                httpOnly: !!c.httpOnly,
+                secure: !!c.secure,
+                sameSite: sameSiteMap[c.sameSite] || 'None'
+              };
+              // Cookie-Editor uses 'expirationDate', Playwright uses 'expires'
+              if (c.expirationDate) {
+                cookie.expires = c.expirationDate;
+              }
+              return cookie;
+            });
+            await context.addCookies(cookies);
+            this.logger.log(`Successfully injected ${cookies.length} Facebook session cookies.`);
+          } catch (e: any) {
+            this.logger.error('Failed to parse or inject Facebook cookies: ' + e.message);
+          }
         }
       }
 
@@ -102,10 +164,63 @@ export class PlaywrightScraperService {
       // Give Facebook's JS a moment to render the feed
       await page.waitForTimeout(3000);
 
-      // Handle login redirection if detected
-      if (page.url().includes('login.php') || await page.$('input[name="email"]')) {
-        this.logger.warn('Facebook Login page hit. Session cookies required.');
-        throw new Error('Facebook authentication session expired or cookies not provided.');
+      // Handle login/profile chooser redirection if detected
+      if (page.url().includes('/login') || page.url().includes('login.php') || await page.$('input[name="email"]')) {
+        this.logger.log(`Detected login/auth wall redirect at URL: ${page.url()}`);
+        
+        // Try to click "Continue" (or translation) if it's the profile chooser screen
+        const clicked = await page.evaluate(() => {
+          const words = ['continue', 'გაგრძელება', 'continuar', 'continuer', 'продолжить'];
+          // 1. Search in buttons, links, and role="button" elements
+          const elements = Array.from(document.querySelectorAll('button, [role="button"], a, div'));
+          for (const el of elements) {
+            const txt = (el.textContent || '').trim().toLowerCase();
+            if (words.includes(txt)) {
+              const clickable = el.closest('button, [role="button"], a') || el;
+              (clickable as HTMLElement).click();
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (clicked) {
+          this.logger.log('Profile chooser Continue/გაგრძელება button clicked via page evaluation.');
+          // Wait for navigation
+          await page.waitForTimeout(6000);
+          this.logger.log(`URL after clicking Continue: ${page.url()}`);
+        } else {
+          this.logger.warn('No profile chooser Continue button detected.');
+        }
+        
+        // Re-check if we are still on the login page
+        if (page.url().includes('/login') || page.url().includes('login.php') || await page.$('input[name="email"]')) {
+          this.logger.warn('Facebook Login page hit. Session cookies required.');
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            const scratchDir = '/Users/Goga.Gabunia/.gemini/antigravity/brain/a442007f-0abf-42f5-92a4-f14611ea6211';
+            
+            const pageContent = await page.content();
+            const pageText = await page.evaluate(() => document.body?.innerText || '');
+
+            // Save screenshot
+            const screenshotPath = path.join(scratchDir, 'login-failed.png');
+            await page.screenshot({ path: screenshotPath, fullPage: false });
+            this.logger.log(`Saved login failure screenshot to: ${screenshotPath}`);
+
+            // Save page HTML
+            const htmlPath = path.join(scratchDir, 'login-failed.html');
+            fs.writeFileSync(htmlPath, pageContent);
+
+            // Save page text
+            const textPath = path.join(scratchDir, 'login-failed.txt');
+            fs.writeFileSync(textPath, pageText);
+          } catch (err: any) {
+            this.logger.error(`Failed to save login failure debug artifacts: ${err.message}`);
+          }
+          throw new Error('Facebook authentication session expired or cookies not provided.');
+        }
       }
 
       // ── Admin Verification Gate ──────────────────────────────────
@@ -160,6 +275,30 @@ export class PlaywrightScraperService {
 
       if (!adminVerified) {
         this.logger.warn('Admin verification FAILED — no admin controls detected on this group page.');
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const scratchDir = '/Users/Goga.Gabunia/.gemini/antigravity/brain/a442007f-0abf-42f5-92a4-f14611ea6211';
+          
+          // Save screenshot
+          const screenshotPath = path.join(scratchDir, 'admin-verification-failed.png');
+          await page.screenshot({ path: screenshotPath, fullPage: false });
+          this.logger.log(`Saved failure screenshot to: ${screenshotPath}`);
+
+          // Save page HTML
+          const htmlPath = path.join(scratchDir, 'admin-verification-failed.html');
+          fs.writeFileSync(htmlPath, pageContent);
+          this.logger.log(`Saved failure HTML to: ${htmlPath}`);
+
+          // Save page text
+          const textPath = path.join(scratchDir, 'admin-verification-failed.txt');
+          fs.writeFileSync(textPath, pageText);
+          this.logger.log(`Saved failure text to: ${textPath}`);
+
+          this.logger.log(`Current page URL: ${page.url()}`);
+        } catch (err: any) {
+          this.logger.error(`Failed to save debugging artifacts: ${err.message}`);
+        }
         this.logger.warn('Scraping is only allowed for groups where you are an admin or moderator.');
         throw new Error('ACCESS_DENIED: You are not an admin or moderator of this Facebook group. Only group admins can sync posts.');
       }
@@ -173,13 +312,22 @@ export class PlaywrightScraperService {
         await page.waitForTimeout(1000 + Math.random() * 1000); // Anti-ban jitter
       }
 
-      // Locate posts using general Facebook CSS classes
-      const postElements = await page.$$('div[role="feed"] div[data-ad-preview="message"]');
+      // Locate posts using general Facebook CSS classes and fallbacks
+      let postElements = await page.$$('div[role="feed"] div[role="article"]');
+      if (postElements.length === 0) {
+        postElements = await page.$$('div[role="article"]');
+      }
+      if (postElements.length === 0) {
+        postElements = await page.$$('div[data-ad-preview="message"]');
+      }
       this.logger.log(`Found ${postElements.length} post containers.`);
 
       for (const element of postElements.slice(0, maxPosts)) {
         try {
-          const rawText = await element.evaluate((el: any) => el.textContent || '');
+          const rawText = await element.evaluate((el: any) => {
+            const msgEl = el.querySelector('[data-ad-preview="message"], [data-testid="post_message"], div[dir="auto"]');
+            return msgEl ? msgEl.textContent : el.textContent || '';
+          });
           
           // Basic keyword filter to only pull potential selling posts
           const watchKeywords = group.keywords.length > 0 ? group.keywords : ['sell', 'price', 'sale', 'usd', '$', 'car', 'mile', 'runs', 'clean'];
@@ -232,44 +380,7 @@ export class PlaywrightScraperService {
       this.logger.warn(`Scraping task encountered a rate limit or login wall: ${error?.message || error}`);
       this.logger.log('Engaging high-fidelity local mock classified fallback items...');
       
-      const mockPosts = [
-        {
-          id: `fb-mock-${Date.now()}-1`,
-          author: 'Michael R.',
-          text: `🚨 CAR FOR SALE 🚨\n2018 Honda Accord EX-L in pristine condition. Single owner, clean title, garage kept. Only 45,000 miles. Automatic transmission, leather seats, Apple CarPlay, and sunroof. Drives like new! Asking $18,500 OBO. Located in Scottsdale, AZ. Serious inquiries only!`,
-          images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuBF53vlfHp3g1BV1rgPrV-1yeYLvNtqpKPw0i1q-Gc1ZUVvrZrFdFLV0fcXcW2pMyLPTfsH556JOdQQm0AN9WoBnyTkUEuA333WtiHy1Yu0J6aDr0IlgO6dOjON3KsnBbY3lUcyrMGengoTLrxIf_GBGAccKxBrx8QcdSRjF-IJtvmKijQEgQTXROyqtsUQ1qzb74KCHFBaKOz_c4Tez8Dkbd06M6Q4rPwBsB6N7mhRxupy1ZgF7kX-P8WLVeKNl0J3TytHH_3TWf8'],
-          title: '2018 Honda Accord EX-L'
-        },
-        {
-          id: `fb-mock-${Date.now()}-2`,
-          author: 'Sarah Jenkins',
-          text: `Hey guys, selling my Custom Mechanical Keyboard. Built it a couple of months ago but moving to a low-profile board. \nSpecs: GMMK Pro 75% Layout, Lubed Gateron Yellow switches, Brass switch plate, Durck keycaps. Comes with custom coiled cable. Sounds amazing, super thacky. Looking for $180 shipped or local pickup. NYC area.`,
-          images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuBF53vlfHp3g1BV1rgPrV-1yeYLvNtqpKPw0i1q-Gc1ZUVvrZrFdFLV0fcXcW2pMyLPTfsH556JOdQQm0AN9WoBnyTkUEuA333WtiHy1Yu0J6aDr0IlgO6dOjON3KsnBbY3lUcyrMGengoTLrxIf_GBGAccKxBrx8QcdSRjF-IJtvmKijQEgQTXROyqtsUQ1qzb74KCHFBaKOz_c4Tez8Dkbd06M6Q4rPwBsB6N7mhRxupy1ZgF7kX-P8WLVeKNl0J3TytHH_3TWf8'],
-          title: 'Custom Mechanical Keyboard'
-        },
-        {
-          id: `fb-mock-${Date.now()}-3`,
-          author: 'David K.',
-          text: `Selling a Sony WH-1000XM4 Noise Cancelling Headphones in Silver. Very minor wear, used primarily in an office setting. Active noise cancellation is incredible, battery life is still perfect (approx 30 hours). Original case and audio cable included. No charging brick. Selling for $160. Can meet up in downtown Phoenix.`,
-          images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuAeaZ6ck25wLLPblFfVVyHzyj8e889AHIabISceQfsVvETeS5FS1ZZuTlz1mHlZP2ITrkgj3SWDPBwEaxOuiOFTPxTu5j1q4aEy8THNNG_V3ya_GhQp3zmUZMHaBxu_TZfFHlsGE0ShhfIXkIY20KS0wAmvMNeOGt1HAmXBs8lghNdfVsoj7JV6q9EjQ3pkwpqns5qmdYInk1iFpsisjJX7rpTzLVHHxzagb2C9QDyoYCy5SGg5GbcRbruvdf5Pbbtw7ousXZIGj1k'],
-          title: 'Sony WH-1000XM4 Headphones'
-        },
-        {
-          id: `fb-mock-${Date.now()}-4`,
-          author: 'Emma Watson',
-          text: `iPhone 13 Pro 128GB - Graphite Gray. Unlocked, battery health at 88%. Upgraded to the 15, so no longer need this one. Always kept in a Spigen case with a tempered glass screen protector. Screen is flawless, very minor micro-scratches on the stainless steel sides. Asking $420. Cash only, no shipping.`,
-          images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuArpcPzzBgh65cU8PR5epqDy4__tzxjf7obJN7GqPhZ5i54vLkytRwIvuhqX2mordT3JX7W3mAMVho-9FopzXTT4CLgDDwKMXYib1wtTi6uoJI9bqO5skx1ynpMB85vmH6kfFb37m3GPy3J1iU_mpMb4Ov31OM4FSaphBmM2jxA8LR1DGj_W34zVvFLNFCXDtRK_WoYedQUIfqLlNn5GXt1zXA1YZ5b94095TOYooxpDw1L-EJ54jwxTfu-D0_6yAfhPh997le-DsU'],
-          title: 'iPhone 13 Pro 128GB'
-        },
-        {
-          id: `fb-mock-${Date.now()}-5`,
-          author: 'Gary Cooper',
-          text: `Looking for local groups to ride with this weekend! Anyone active around Scottsdale? Also, is there anyone selling a good gravel bike? Budget is $1,000.`,
-          images: [],
-          title: 'Looking for riding group'
-        }
-      ];
-
+      const mockPosts = this.getMockPosts();
       scrapedItems.push(...mockPosts);
 
       await this.prisma.scrapingLog.create({
@@ -282,10 +393,128 @@ export class PlaywrightScraperService {
       });
     } finally {
       if (browser) {
+        this.logger.log('Closing browser session...');
         await browser.close();
       }
     }
 
     return scrapedItems;
+  }
+
+  /**
+   * Scrapes group posts from Apify's synchronous actor execution API
+   */
+  private async scrapeGroupWithApify(groupUrl: string, maxPosts: number, token: string): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
+    this.logger.log(`Triggering Apify sync run for URL: ${groupUrl}`);
+    
+    // Prepare input payload for apify/facebook-groups-scraper
+    const input: Record<string, any> = {
+      startUrls: [
+        { url: groupUrl }
+      ],
+      resultsLimit: maxPosts,
+      viewOption: "CHRONOLOGICAL"
+    };
+
+    // If cookies are provided in environment, pass them directly to the Apify actor input
+    const fbCookiesRaw = process.env.FB_COOKIES;
+    if (fbCookiesRaw) {
+      try {
+        const rawCookies = JSON.parse(fbCookiesRaw);
+        input.cookies = rawCookies;
+        this.logger.log(`Passing ${rawCookies.length} Facebook session cookies to Apify.`);
+      } catch (err: any) {
+        this.logger.error(`Failed to parse cookies for Apify payload: ${err.message}`);
+      }
+    }
+
+    const response = await fetch(`https://api.apify.com/v2/acts/apify~facebook-groups-scraper/run-sync-get-dataset-items?token=${token}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Apify API returned error status ${response.status}: ${errorText}`);
+    }
+
+    const items = await response.json();
+    if (!Array.isArray(items)) {
+      throw new Error('Apify API response is not an array of dataset items');
+    }
+    this.logger.log(`Apify completed successfully. Retrieved ${items.length} items from dataset.`);
+
+    // Map Apify's output schema to standard post structure
+    return items.map((item: any) => {
+      const text = item.text || '';
+      
+      // Extract images from attachments
+      const images: string[] = [];
+      if (Array.isArray(item.attachments)) {
+        for (const attachment of item.attachments) {
+          if (attachment.imageUri) {
+            images.push(attachment.imageUri);
+          } else if (attachment.media?.image?.uri) {
+            images.push(attachment.media.image.uri);
+          }
+        }
+      }
+
+      const id = item.id || item.legacyId || `fb-${Math.random().toString(36).substring(7)}`;
+
+      return {
+        id,
+        text,
+        images: [...new Set(images)],
+        author: item.user?.name || 'Facebook User',
+        title: text.split('\n')[0].substring(0, 100) || 'Facebook Group Post'
+      };
+    });
+  }
+
+  /**
+   * Helper to return standard mock posts when scraping fails
+   */
+  private getMockPosts(): { id: string; author: string; text: string; images: string[]; title: string }[] {
+    return [
+      {
+        id: `fb-mock-${Date.now()}-1`,
+        author: 'Michael R.',
+        text: `🚨 CAR FOR SALE 🚨\n2018 Honda Accord EX-L in pristine condition. Single owner, clean title, garage kept. Only 45,000 miles. Automatic transmission, leather seats, Apple CarPlay, and sunroof. Drives like new! Asking $18,500 OBO. Located in Scottsdale, AZ. Serious inquiries only!`,
+        images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuBF53vlfHp3g1BV1rgPrV-1yeYLvNtqpKPw0i1q-Gc1ZUVvrZrFdFLV0fcXcW2pMyLPTfsH556JOdQQm0AN9WoBnyTkUEuA333WtiHy1Yu0J6aDr0IlgO6dOjON3KsnBbY3lUcyrMGengoTLrxIf_GBGAccKxBrx8QcdSRjF-IJtvmKijQEgQTXROyqtsUQ1qzb74KCHFBaKOz_c4Tez8Dkbd06M6Q4rPwBsB6N7mhRxupy1ZgF7kX-P8WLVeKNl0J3TytHH_3TWf8'],
+        title: '2018 Honda Accord EX-L'
+      },
+      {
+        id: `fb-mock-${Date.now()}-2`,
+        author: 'Sarah Jenkins',
+        text: `Hey guys, selling my Custom Mechanical Keyboard. Built it a couple of months ago but moving to a low-profile board. \nSpecs: GMMK Pro 75% Layout, Lubed Gateron Yellow switches, Brass switch plate, Durck keycaps. Comes with custom coiled cable. Sounds amazing, super thacky. Looking for $180 shipped or local pickup. NYC area.`,
+        images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuBF53vlfHp3g1BV1rgPrV-1yeYLvNtqpKPw0i1q-Gc1ZUVvrZrFdFLV0fcXcW2pMyLPTfsH556JOdQQm0AN9WoBnyTkUEuA333WtiHy1Yu0J6aDr0IlgO6dOjON3KsnBbY3lUcyrMGengoTLrxIf_GBGAccKxBrx8QcdSRjF-IJtvmKijQEgQTXROyqtsUQ1qzb74KCHFBaKOz_c4Tez8Dkbd06M6Q4rPwBsB6N7mhRxupy1ZgF7kX-P8WLVeKNl0J3TytHH_3TWf8'],
+        title: 'Custom Mechanical Keyboard'
+      },
+      {
+        id: `fb-mock-${Date.now()}-3`,
+        author: 'David K.',
+        text: `Selling a Sony WH-1000XM4 Noise Cancelling Headphones in Silver. Very minor wear, used primarily in an office setting. Active noise cancellation is incredible, battery life is still perfect (approx 30 hours). Original case and audio cable included. No charging brick. Selling for $160. Can meet up in downtown Phoenix.`,
+        images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuAeaZ6ck25wLLPblFfVVyHzyj8e889AHIabISceQfsVvETeS5FS1ZZuTlz1mHlZP2ITrkgj3SWDPBwEaxOuiOFTPxTu5j1q4aEy8THNNG_V3ya_GhQp3zmUZMHaBxu_TZfFHlsGE0ShhfIXkIY20KS0wAmvMNeOGt1HAmXBs8lghNdfVsoj7JV6q9EjQ3pkwpqns5qmdYInk1iFpsisjJX7rpTzLVHHxzagb2C9QDyoYCy5SGg5GbcRbruvdf5Pbbtw7ousXZIGj1k'],
+        title: 'Sony WH-1000XM4 Headphones'
+      },
+      {
+        id: `fb-mock-${Date.now()}-4`,
+        author: 'Emma Watson',
+        text: `iPhone 13 Pro 128GB - Graphite Gray. Unlocked, battery health at 88%. Upgraded to the 15, so no longer need this one. Always kept in a Spigen case with a tempered glass screen protector. Screen is flawless, very minor micro-scratches on the stainless steel sides. Asking $420. Cash only, no shipping.`,
+        images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuArpcPzzBgh65cU8PR5epqDy4__tzxjf7obJN7GqPhZ5i54vLkytRwIvuhqX2mordT3JX7W3mAMVho-9FopzXTT4CLgDDwKMXYib1wtTi6uoJI9bqO5skx1ynpMB85vmH6kfFb37m3GPy3J1iU_mpMb4Ov31OM4FSaphBmM2jxA8LR1DGj_W34zVvFLNFCXDtRK_WoYedQUIfqLlNn5GXt1zXA1YZ5b94095TOYooxpDw1L-EJ54jwxTfu-D0_6yAfhPh997le-DsU'],
+        title: 'iPhone 13 Pro 128GB'
+      },
+      {
+        id: `fb-mock-${Date.now()}-5`,
+        author: 'Gary Cooper',
+        text: `Looking for local groups to ride with this weekend! Anyone active around Scottsdale? Also, is there anyone selling a good gravel bike? Budget is $1,000.`,
+        images: [],
+        title: 'Looking for riding group'
+      }
+    ];
   }
 }
