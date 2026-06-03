@@ -407,13 +407,12 @@ export class PlaywrightScraperService {
   private async scrapeGroupWithApify(groupUrl: string, maxPosts: number, token: string): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
     this.logger.log(`Triggering Apify sync run for URL: ${groupUrl}`);
     
-    // Prepare input payload for apify/facebook-groups-scraper
+    // Prepare input payload for whoareyouanas/facebook-group-scraper
     const input: Record<string, any> = {
       startUrls: [
         { url: groupUrl }
       ],
-      resultsLimit: maxPosts,
-      viewOption: "CHRONOLOGICAL"
+      resultsLimit: maxPosts
     };
 
     // If cookies are provided in environment, pass them directly to the Apify actor input
@@ -421,14 +420,22 @@ export class PlaywrightScraperService {
     if (fbCookiesRaw) {
       try {
         const rawCookies = JSON.parse(fbCookiesRaw);
-        input.cookies = rawCookies;
-        this.logger.log(`Passing ${rawCookies.length} Facebook session cookies to Apify.`);
+        // Clean cookies to ensure compatibility with Puppeteer based actor
+        input.cookies = rawCookies.map((c: any) => ({
+          name: c.name,
+          value: c.value,
+          domain: c.domain,
+          path: c.path || '/',
+          secure: typeof c.secure === 'boolean' ? c.secure : true,
+          httpOnly: typeof c.httpOnly === 'boolean' ? c.httpOnly : true
+        }));
+        this.logger.log(`Passing ${rawCookies.length} cleaned Facebook session cookies to Apify.`);
       } catch (err: any) {
         this.logger.error(`Failed to parse cookies for Apify payload: ${err.message}`);
       }
     }
 
-    const response = await fetch(`https://api.apify.com/v2/acts/apify~facebook-groups-scraper/run-sync-get-dataset-items?token=${token}`, {
+    const response = await fetch(`https://api.apify.com/v2/acts/whoareyouanas~facebook-group-scraper/run-sync-get-dataset-items?token=${token}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -455,28 +462,16 @@ export class PlaywrightScraperService {
 
     // Map Apify's output schema to standard post structure
     return items.map((item: any) => {
-      const text = item.text || '';
-      
-      // Extract images from attachments
-      const images: string[] = [];
-      if (Array.isArray(item.attachments)) {
-        for (const attachment of item.attachments) {
-          if (attachment.imageUri) {
-            images.push(attachment.imageUri);
-          } else if (attachment.media?.image?.uri) {
-            images.push(attachment.media.image.uri);
-          }
-        }
-      }
-
-      const id = item.id || item.legacyId || `fb-${Math.random().toString(36).substring(7)}`;
+      const text = (item.text || '') as string;
+      const images = (Array.isArray(item.images) ? item.images : []) as string[];
+      const id = (item.postId || item.id || `fb-${Math.random().toString(36).substring(7)}`) as string;
 
       return {
         id,
         text,
         images: [...new Set(images)],
-        author: item.user?.name || 'Facebook User',
-        title: text.split('\n')[0].substring(0, 100) || 'Facebook Group Post'
+        author: (item.authorName || 'Facebook User') as string,
+        title: (text.split('\n')[0].substring(0, 100) || 'Facebook Group Post') as string
       };
     });
   }
