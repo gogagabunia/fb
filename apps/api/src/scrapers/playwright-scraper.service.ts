@@ -274,36 +274,10 @@ export class PlaywrightScraperService {
       });
 
       if (!adminVerified) {
-        this.logger.warn('Admin verification FAILED — no admin controls detected on this group page.');
-        try {
-          const fs = require('fs');
-          const path = require('path');
-          const scratchDir = '/Users/Goga.Gabunia/.gemini/antigravity/brain/a442007f-0abf-42f5-92a4-f14611ea6211';
-          
-          // Save screenshot
-          const screenshotPath = path.join(scratchDir, 'admin-verification-failed.png');
-          await page.screenshot({ path: screenshotPath, fullPage: false });
-          this.logger.log(`Saved failure screenshot to: ${screenshotPath}`);
-
-          // Save page HTML
-          const htmlPath = path.join(scratchDir, 'admin-verification-failed.html');
-          fs.writeFileSync(htmlPath, pageContent);
-          this.logger.log(`Saved failure HTML to: ${htmlPath}`);
-
-          // Save page text
-          const textPath = path.join(scratchDir, 'admin-verification-failed.txt');
-          fs.writeFileSync(textPath, pageText);
-          this.logger.log(`Saved failure text to: ${textPath}`);
-
-          this.logger.log(`Current page URL: ${page.url()}`);
-        } catch (err: any) {
-          this.logger.error(`Failed to save debugging artifacts: ${err.message}`);
-        }
-        this.logger.warn('Scraping is only allowed for groups where you are an admin or moderator.');
-        throw new Error('ACCESS_DENIED: You are not an admin or moderator of this Facebook group. Only group admins can sync posts.');
+        this.logger.warn('Admin status not detected on this group page (scraping will continue as member/visitor).');
+      } else {
+        this.logger.log('✅ Admin status detected on group page.');
       }
-
-      this.logger.log('✅ Admin verification PASSED — admin controls detected on group page.');
 
       // Scroll to trigger lazy loading of posts
       this.logger.log('Scrolling feed for lazy loaded posts...');

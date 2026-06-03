@@ -76,7 +76,7 @@ async function main() {
         console.log(`✨ [CLASSIFIED AS LISTING]`);
         console.log(`   🏷️  Title:      ${parsed.title}`);
         console.log(`   📂 Category:   ${parsed.category}`);
-        console.log(`   💰 Price:      ${parsed.price !== undefined ? `$${parsed.price.toLocaleString()}` : 'N/A'}`);
+        console.log(`   💰 Price:      ${parsed.price ? `$${parsed.price.toLocaleString()}` : 'N/A'}`);
         console.log(`   📍 Location:   ${parsed.location || 'N/A'}`);
         console.log(`   ⚙️  Specs:      ${JSON.stringify(parsed.specs)}`);
 
