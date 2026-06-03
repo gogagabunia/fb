@@ -341,6 +341,10 @@ export async function triggerScrapingAction(groupId: string) {
     return { success: true, postsFound: rawPosts.length, listingsImported: importedCount };
   } catch (error: any) {
     console.error(`Failed to run scraping trigger for group ${groupId}:`, error);
+    // Surface admin verification failures clearly to the user
+    if (error.message?.includes('ACCESS_DENIED')) {
+      return { success: false, error: 'You are not an admin or moderator of this Facebook group. Only group admins can sync posts.' };
+    }
     return { success: false, error: error.message };
   }
 }

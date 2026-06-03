@@ -42,19 +42,21 @@ model User {
 }
 
 model FacebookGroup {
-  id             String           @id @default(uuid())
-  groupId        String           @unique // Facebook's unique Group ID
-  name           String
-  url            String
-  isPublic       Boolean          @default(true)
-  isActive       Boolean          @default(true)
-  keywords       String[]         // List of custom brand/product keywords to flag
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  userId         String
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  importedPosts  ImportedPost[]
-  scrapingLogs   ScrapingLog[]
+  id              String           @id @default(uuid())
+  groupId         String           @unique // Facebook's unique Group ID
+  name            String
+  url             String
+  isPublic        Boolean          @default(true)
+  isActive        Boolean          @default(true)
+  adminVerified   Boolean          @default(false) // True if scraper confirmed user is admin
+  adminVerifiedAt DateTime?        // When admin status was last verified
+  keywords        String[]         // List of custom brand/product keywords to flag
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  importedPosts   ImportedPost[]
+  scrapingLogs    ScrapingLog[]
 }
 
 model ImportedPost {

@@ -62,9 +62,31 @@ export class PlaywrightScraperService {
       const fbCookiesRaw = process.env.FB_COOKIES;
       if (fbCookiesRaw) {
         try {
-          const cookies = JSON.parse(fbCookiesRaw);
+          const rawCookies = JSON.parse(fbCookiesRaw);
+          // Transform Cookie-Editor export format → Playwright format
+          const cookies = rawCookies.map((c: any) => {
+            const sameSiteMap: Record<string, string> = {
+              'no_restriction': 'None',
+              'lax': 'Lax',
+              'strict': 'Strict'
+            };
+            const cookie: any = {
+              name: c.name,
+              value: c.value,
+              domain: c.domain,
+              path: c.path || '/',
+              httpOnly: !!c.httpOnly,
+              secure: !!c.secure,
+              sameSite: sameSiteMap[c.sameSite] || 'None'
+            };
+            // Cookie-Editor uses 'expirationDate', Playwright uses 'expires'
+            if (c.expirationDate) {
+              cookie.expires = c.expirationDate;
+            }
+            return cookie;
+          });
           await context.addCookies(cookies);
-          this.logger.log('Successfully injected Facebook session cookies to session context.');
+          this.logger.log(`Successfully injected ${cookies.length} Facebook session cookies.`);
         } catch (e: any) {
           this.logger.error('Failed to parse or inject Facebook cookies: ' + e.message);
         }
@@ -74,13 +96,75 @@ export class PlaywrightScraperService {
 
       // Go to group discussion page
       this.logger.log(`Navigating to group URL: ${group.url}`);
-      await page.goto(group.url, { waitUntil: 'networkidle', timeout: 30000 });
+      // Use 'domcontentloaded' instead of 'networkidle' — Facebook streams
+      // background requests indefinitely, so networkidle never resolves
+      await page.goto(group.url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      // Give Facebook's JS a moment to render the feed
+      await page.waitForTimeout(3000);
 
       // Handle login redirection if detected
       if (page.url().includes('login.php') || await page.$('input[name="email"]')) {
         this.logger.warn('Facebook Login page hit. Session cookies required.');
         throw new Error('Facebook authentication session expired or cookies not provided.');
       }
+
+      // ── Admin Verification Gate ──────────────────────────────────
+      // Check if the authenticated user is an admin/moderator of this group
+      // by scanning for Facebook's admin-only UI elements on the page
+      this.logger.log('Verifying admin/moderator status for this group...');
+      
+      const pageContent = await page.content();
+      const pageText = await page.evaluate(() => document.body?.innerText || '');
+      
+      const adminIndicators = [
+        'Admin Tools',
+        'Admin tools',
+        'admin tools',
+        'Manage group',
+        'Manage Group',
+        'manage group',
+        'Group settings',
+        'group settings',
+        'Pending posts',
+        'pending posts',
+        'Member requests',
+        'member requests',
+        'Moderation alerts',
+      ];
+
+      const isAdmin = adminIndicators.some(indicator => 
+        pageText.includes(indicator) || pageContent.includes(indicator)
+      );
+
+      // Also check for admin-specific aria labels and data attributes
+      const adminElements = await page.$$([
+        '[aria-label*="Admin"]',
+        '[aria-label*="admin"]',
+        '[aria-label*="Manage"]',
+        'a[href*="/groups/"][href*="/admin"]',
+        'a[href*="admin_activities"]',
+        'a[href*="member_requests"]',
+      ].join(', '));
+
+      const hasAdminElements = adminElements.length > 0;
+      const adminVerified = isAdmin || hasAdminElements;
+
+      // Update verification status in the database
+      await this.prisma.facebookGroup.update({
+        where: { id: group.id },
+        data: {
+          adminVerified,
+          adminVerifiedAt: new Date()
+        }
+      });
+
+      if (!adminVerified) {
+        this.logger.warn('Admin verification FAILED — no admin controls detected on this group page.');
+        this.logger.warn('Scraping is only allowed for groups where you are an admin or moderator.');
+        throw new Error('ACCESS_DENIED: You are not an admin or moderator of this Facebook group. Only group admins can sync posts.');
+      }
+
+      this.logger.log('✅ Admin verification PASSED — admin controls detected on group page.');
 
       // Scroll to trigger lazy loading of posts
       this.logger.log('Scrolling feed for lazy loaded posts...');
