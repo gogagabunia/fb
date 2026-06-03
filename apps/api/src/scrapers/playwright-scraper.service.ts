@@ -447,6 +447,12 @@ export class PlaywrightScraperService {
     }
     this.logger.log(`Apify completed successfully. Retrieved ${items.length} items from dataset.`);
 
+    // Check if Apify returned any error items (e.g. content not available, login wall, etc.)
+    const errorItem = items.find((item: any) => item.error);
+    if (errorItem) {
+      throw new Error(`Apify scraping error (${errorItem.error}): ${errorItem.errorDescription || 'No error description provided.'}`);
+    }
+
     // Map Apify's output schema to standard post structure
     return items.map((item: any) => {
       const text = item.text || '';
