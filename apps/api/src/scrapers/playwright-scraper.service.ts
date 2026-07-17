@@ -36,7 +36,7 @@ export class PlaywrightScraperService {
       return 'PRIVATE';
     }
     try {
-      const posts = await this.scrapeGroupWithApify(url, { maxPosts: 3, token: apifyToken, cookiesJson: null });
+      const posts = await this.scrapeGroupWithApify(url, { maxPosts: 3, token: apifyToken, noCookies: true });
       return posts.length > 0 ? 'PUBLIC' : 'PRIVATE';
     } catch (error: any) {
       this.logger.log(`Visibility probe treated as PRIVATE: ${error?.message || error}`);
@@ -412,9 +412,9 @@ export class PlaywrightScraperService {
    */
   private async scrapeGroupWithApify(
     groupUrl: string,
-    opts: { maxPosts: number; token: string; sinceDays?: number; cookiesJson?: string | null }
+    opts: { maxPosts: number; token: string; sinceDays?: number; cookiesJson?: string | null; noCookies?: boolean }
   ): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
-    const { maxPosts, token, sinceDays, cookiesJson = null } = opts;
+    const { maxPosts, token, sinceDays, cookiesJson = null, noCookies = false } = opts;
     this.logger.log(`Triggering Apify sync run for URL: ${groupUrl}`);
 
     // Prepare input payload for whoareyouanas/facebook-group-scraper
@@ -434,8 +434,9 @@ export class PlaywrightScraperService {
     }
 
     // Prefer per-owner cookies passed in for this sync; fall back to a global
-    // FB_COOKIES env var for local/dev use.
-    const fbCookiesRaw = cookiesJson || process.env.FB_COOKIES;
+    // FB_COOKIES env var. When noCookies is set (visibility probe), send NO
+    // cookies at all so we truly test anonymous/public readability.
+    const fbCookiesRaw = noCookies ? null : (cookiesJson || process.env.FB_COOKIES);
     if (fbCookiesRaw) {
       try {
         const rawCookies = JSON.parse(fbCookiesRaw);
