@@ -24,6 +24,7 @@ export default function AddGroupWizardPage() {
   const [groupName, setGroupName] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['Vehicles']);
   const [keywords, setKeywords] = useState('BMW, Porsche, Mazda, Toyota, OEM');
+  const [groupIsPublic, setGroupIsPublic] = useState(false);
   const [toggleNotify, setToggleNotify] = useState(false);
   const [progress, setProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -130,7 +131,8 @@ export default function AddGroupWizardPage() {
           name: groupName,
           url: groupUrl,
           groupId: simulatedGroupId,
-          keywords: keywordsArray
+          keywords: keywordsArray,
+          isPublic: groupIsPublic
         });
 
         if (groupRes.success && groupRes.group) {
@@ -666,6 +668,40 @@ export default function AddGroupWizardPage() {
                             </p>
                           </div>
                           <div className="space-y-xl">
+                            {/* Group visibility — chosen manually (auto-detection is unreliable for this scraper) */}
+                            <div className="space-y-sm">
+                              <div>
+                                <span className="text-label-md font-bold block text-primary">Group Visibility</span>
+                                <span className="text-body-sm text-on-surface-variant">
+                                  Private groups need you to connect your Facebook to sync.
+                                </span>
+                              </div>
+                              <div className="flex gap-sm">
+                                <button
+                                  type="button"
+                                  onClick={() => setGroupIsPublic(false)}
+                                  className={`flex-1 px-md py-sm rounded-lg border text-label-md font-semibold transition-all ${
+                                    !groupIsPublic
+                                      ? 'border-secondary bg-secondary-container text-on-secondary-container'
+                                      : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
+                                  }`}
+                                >
+                                  🔒 Private
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setGroupIsPublic(true)}
+                                  className={`flex-1 px-md py-sm rounded-lg border text-label-md font-semibold transition-all ${
+                                    groupIsPublic
+                                      ? 'border-secondary bg-secondary-container text-on-secondary-container'
+                                      : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
+                                  }`}
+                                >
+                                  🌐 Public
+                                </button>
+                              </div>
+                            </div>
+
                             <div className="space-y-md">
                               <div className="flex items-center justify-between">
                                 <div>

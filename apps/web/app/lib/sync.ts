@@ -64,14 +64,25 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
     rawPosts = await scraper.scrapeGroup(group.id, { sinceDays, maxPosts, cookiesJson });
   } catch (scrapeErr: any) {
     const msg = String(scrapeErr?.message || scrapeErr);
-    // Auth/login-wall failure on a private group → mark the session expired and
-    // prompt a reconnect instead of reporting a fake success.
-    if (!group.isPublic && /FB_AUTH_REQUIRED|auth|login|session|cookie/i.test(msg)) {
-      await prisma.user.update({
-        where: { id: group.userId },
-        data: { fbSessionStatus: 'EXPIRED' }
-      });
-      return { success: false, needsFacebook: true, error: 'Your Facebook session expired. Please reconnect Facebook and sync again.' };
+    // Sync-based detection: a login-wall / access failure means the cookies we
+    // had (the owner's or the shared fallback) can't read this group. Prompt the
+    // owner to connect their own Facebook — regardless of the public/private
+    // label, since even "public" groups need a login with this scraper.
+    if (/FB_AUTH_REQUIRED|auth|login|session|cookie|access|denied|permission/i.test(msg)) {
+      const hadOwnerSession = group.user?.fbSessionStatus === 'ACTIVE';
+      if (hadOwnerSession) {
+        await prisma.user.update({
+          where: { id: group.userId },
+          data: { fbSessionStatus: 'EXPIRED' }
+        });
+      }
+      return {
+        success: false,
+        needsFacebook: true,
+        error: hadOwnerSession
+          ? 'Your Facebook session expired. Please reconnect Facebook and sync again.'
+          : "Couldn't access this group. Connect a Facebook account that's a member of it, then sync again."
+      };
     }
     return { success: false, error: msg };
   }

@@ -144,24 +144,18 @@ export async function getFacebookGroups() {
 /**
  * Connect a new Facebook Group into the platform
  */
-export async function connectFacebookGroup(data: { name: string; url: string; groupId: string; keywords: string[] }) {
+export async function connectFacebookGroup(data: { name: string; url: string; groupId: string; keywords: string[]; isPublic?: boolean }) {
   try {
     const userId = await getSession();
     if (!userId) {
       return { success: false, error: 'You must be logged in to connect a group.' };
     }
 
-    // Detect whether the group is publicly readable or private. This routes the
-    // sync flow: public → syncs with no Facebook login; private → owner must
-    // connect their Facebook session once.
-    const scraper = new PlaywrightScraperService();
-    let visibility: 'PUBLIC' | 'PRIVATE' = 'PRIVATE';
-    try {
-      visibility = await scraper.detectGroupVisibility(data.url);
-    } catch (probeErr) {
-      console.error('Visibility probe failed, defaulting to PRIVATE:', probeErr);
-    }
-    const isPublic = visibility === 'PUBLIC';
+    // Visibility is chosen by the owner in the connect form. Auto-detection is
+    // unreliable with the Apify actor (it needs cookies even for public groups,
+    // so a probe can't tell public from private). Private groups are gated on a
+    // Facebook session at sync time; public groups sync via the shared session.
+    const isPublic = data.isPublic === true;
 
     const group = await prisma.facebookGroup.upsert({
       where: { groupId: data.groupId },
@@ -186,7 +180,7 @@ export async function connectFacebookGroup(data: { name: string; url: string; gr
     });
 
     revalidatePath('/dashboard');
-    return { success: true, group, visibility };
+    return { success: true, group, isPublic };
   } catch (error: any) {
     console.error('Failed to connect Facebook group:', error);
     return { success: false, error: error.message };
