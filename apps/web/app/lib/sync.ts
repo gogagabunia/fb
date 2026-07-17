@@ -52,9 +52,16 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
   const scraper = new PlaywrightScraperService();
   const parser = new OpenAIParserService();
 
+  // Test mode keeps Apify usage minimal during development: fetch only the
+  // latest few posts with no date window. Toggle with SYNC_TEST_MODE=true;
+  // unset (or "false") restores the full "last 30 days" sync.
+  const testMode = process.env.SYNC_TEST_MODE === 'true';
+  const sinceDays = testMode ? 0 : 30; // 0 → skip the 30-day date filter
+  const maxPosts = testMode ? 5 : 100;
+
   let rawPosts;
   try {
-    rawPosts = await scraper.scrapeGroup(group.id, { sinceDays: 30, maxPosts: 100, cookiesJson });
+    rawPosts = await scraper.scrapeGroup(group.id, { sinceDays, maxPosts, cookiesJson });
   } catch (scrapeErr: any) {
     const msg = String(scrapeErr?.message || scrapeErr);
     // Auth/login-wall failure on a private group → mark the session expired and
