@@ -1,27 +1,13 @@
 'use server';
 
-import { PrismaClient, PostStatus } from 'database';
+import { PostStatus } from 'database';
 import { PlaywrightScraperService } from '../../api/src/scrapers/playwright-scraper.service';
 import { OpenAIParserService } from '../../api/src/parser/openai-parser.service';
 import { revalidatePath } from 'next/cache';
 import { getSession } from './lib/auth';
-
-const prisma = new PrismaClient();
-
-// Helper to ensure a mock user exists and return it
-async function getOrCreateMockUser() {
-  return prisma.user.upsert({
-    where: { email: 'test@groupmarket.com' },
-    update: {},
-    create: {
-      clerkId: 'user_clerk_123',
-      email: 'test@groupmarket.com',
-      firstName: 'Test',
-      lastName: 'Admin',
-      role: 'ADMIN',
-    },
-  });
-}
+import { prisma } from './lib/prisma';
+import { encrypt } from './lib/crypto';
+import { syncGroupById, type SyncResult } from './lib/sync';
 
 /**
  * Fetch all approved listings for the public Marketplace Feed
@@ -108,6 +94,7 @@ export async function getDashboardStats() {
         name: g.name,
         url: g.url,
         isActive: g.isActive,
+        isPublic: g.isPublic,
         createdAt: g.createdAt.toISOString()
       }))
     };
@@ -159,7 +146,23 @@ export async function getFacebookGroups() {
  */
 export async function connectFacebookGroup(data: { name: string; url: string; groupId: string; keywords: string[] }) {
   try {
-    const user = await getOrCreateMockUser();
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in to connect a group.' };
+    }
+
+    // Detect whether the group is publicly readable or private. This routes the
+    // sync flow: public → syncs with no Facebook login; private → owner must
+    // connect their Facebook session once.
+    const scraper = new PlaywrightScraperService();
+    let visibility: 'PUBLIC' | 'PRIVATE' = 'PRIVATE';
+    try {
+      visibility = await scraper.detectGroupVisibility(data.url);
+    } catch (probeErr) {
+      console.error('Visibility probe failed, defaulting to PRIVATE:', probeErr);
+    }
+    const isPublic = visibility === 'PUBLIC';
+
     const group = await prisma.facebookGroup.upsert({
       where: { groupId: data.groupId },
       update: {
@@ -167,20 +170,23 @@ export async function connectFacebookGroup(data: { name: string; url: string; gr
         url: data.url,
         keywords: data.keywords,
         isActive: true,
+        isPublic,
+        visibilityCheckedAt: new Date(),
       },
       create: {
         groupId: data.groupId,
         name: data.name,
         url: data.url,
         keywords: data.keywords,
-        isPublic: true,
+        isPublic,
         isActive: true,
-        userId: user.id
+        visibilityCheckedAt: new Date(),
+        userId
       }
     });
 
     revalidatePath('/dashboard');
-    return { success: true, group };
+    return { success: true, group, visibility };
   } catch (error: any) {
     console.error('Failed to connect Facebook group:', error);
     return { success: false, error: error.message };
@@ -280,71 +286,26 @@ export async function rejectPostAction(id: string, reason: string) {
 /**
  * Trigger Playwright Scraping & OpenAI Parsing pipeline on the server
  */
-export async function triggerScrapingAction(groupId: string) {
+export async function triggerScrapingAction(groupId: string): Promise<SyncResult> {
   try {
-    const group = await prisma.facebookGroup.findUnique({
-      where: { id: groupId }
-    });
-
-    if (!group) {
-      throw new Error(`Group with ID ${groupId} not found`);
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in to sync a group.' };
     }
 
-    const scraper = new PlaywrightScraperService();
-    const parser = new OpenAIParserService();
-    const user = await getOrCreateMockUser();
-
-    console.log(`Starting dynamic scrape for ${group.name}...`);
-    const rawPosts = await scraper.scrapeGroup(group.id, 5);
-
-    let importedCount = 0;
-
-    const { sendAdminModerationAlert } = require('./lib/email');
-
-    for (const post of rawPosts) {
-      const parsed = await parser.parseRawPost(post.text);
-      if (parsed.isListing) {
-        importedCount++;
-        const imported = await prisma.importedPost.upsert({
-          where: { fbPostId: post.id },
-          update: {
-            rawText: post.text,
-            images: post.images,
-            authorName: post.author,
-            priceScraped: parsed.price || null,
-            status: 'PENDING'
-          },
-          create: {
-            fbPostId: post.id,
-            rawText: post.text,
-            images: post.images,
-            authorName: post.author,
-            priceScraped: parsed.price || null,
-            status: 'PENDING',
-            groupId: group.id,
-            userId: user.id
-          }
-        });
-
-        // Dispatch background email alert (non-blocking)
-        sendAdminModerationAlert({
-          id: imported.id,
-          authorName: imported.authorName,
-          rawText: imported.rawText,
-          groupName: group.name
-        }).catch((err: any) => console.error('Failed to trigger admin email notifier:', err));
-      }
+    // Only the owner may sync their group.
+    const owned = await prisma.facebookGroup.findUnique({ where: { id: groupId }, select: { userId: true } });
+    if (!owned || owned.userId !== userId) {
+      return { success: false, error: 'Group not found or not owned by you.' };
     }
+
+    const result = await syncGroupById(groupId);
 
     revalidatePath('/admin');
     revalidatePath('/dashboard');
-    return { success: true, postsFound: rawPosts.length, listingsImported: importedCount };
+    return result;
   } catch (error: any) {
     console.error(`Failed to run scraping trigger for group ${groupId}:`, error);
-    // Surface admin verification failures clearly to the user
-    if (error.message?.includes('ACCESS_DENIED')) {
-      return { success: false, error: 'You are not an admin or moderator of this Facebook group. Only group admins can sync posts.' };
-    }
     return { success: false, error: error.message };
   }
 }
@@ -663,6 +624,16 @@ export async function ingestRawTextAction(groupId: string, rawText: string) {
  */
 export async function updateFacebookGroupAction(id: string, data: { name: string; url: string; keywords: string[] }) {
   try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in.' };
+    }
+    // Only the owner may edit their group.
+    const existing = await prisma.facebookGroup.findUnique({ where: { id }, select: { userId: true } });
+    if (!existing || existing.userId !== userId) {
+      return { success: false, error: 'Group not found or not owned by you.' };
+    }
+
     const updated = await prisma.facebookGroup.update({
       where: { id },
       data: {
@@ -686,6 +657,16 @@ export async function updateFacebookGroupAction(id: string, data: { name: string
  */
 export async function disconnectFacebookGroupAction(id: string) {
   try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in.' };
+    }
+    // Only the owner may delete their group (cascades raw posts & logs).
+    const existing = await prisma.facebookGroup.findUnique({ where: { id }, select: { userId: true } });
+    if (!existing || existing.userId !== userId) {
+      return { success: false, error: 'Group not found or not owned by you.' };
+    }
+
     await prisma.facebookGroup.delete({
       where: { id }
     });
@@ -695,6 +676,92 @@ export async function disconnectFacebookGroupAction(id: string) {
     return { success: true };
   } catch (error: any) {
     console.error('Failed to disconnect Facebook group:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * ── Facebook session management (private-group scraping) ─────────────────
+ * Store the owner's Facebook session (encrypted) so private groups can sync.
+ * cookiesJson is the raw cookie-export JSON captured client-side.
+ */
+export async function saveFacebookSession(cookiesJson: string) {
+  try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in.' };
+    }
+
+    // Validate it is real cookie JSON containing a Facebook session.
+    let parsed: any;
+    try {
+      parsed = JSON.parse(cookiesJson);
+    } catch {
+      return { success: false, error: 'Invalid cookie data — expected a JSON array of cookies.' };
+    }
+    const cookies = Array.isArray(parsed) ? parsed : parsed?.cookies;
+    if (!Array.isArray(cookies) || !cookies.some((c: any) => c?.name === 'c_user') || !cookies.some((c: any) => c?.name === 'xs')) {
+      return { success: false, error: 'These cookies do not contain a Facebook login session (missing c_user / xs).' };
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        fbSessionCookies: encrypt(JSON.stringify(cookies)),
+        fbSessionStatus: 'ACTIVE',
+        fbSessionSavedAt: new Date()
+      }
+    });
+
+    revalidatePath('/dashboard');
+    revalidatePath('/settings');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to save Facebook session:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Report the current user's Facebook connection status (no secrets returned).
+ */
+export async function getFbConnectionStatus() {
+  try {
+    const userId = await getSession();
+    if (!userId) return { connected: false, status: 'NONE' as const, savedAt: null };
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { fbSessionStatus: true, fbSessionSavedAt: true }
+    });
+    return {
+      connected: u?.fbSessionStatus === 'ACTIVE',
+      status: (u?.fbSessionStatus as 'ACTIVE' | 'EXPIRED' | 'NONE') || 'NONE',
+      savedAt: u?.fbSessionSavedAt || null
+    };
+  } catch (error: any) {
+    console.error('Failed to read Facebook connection status:', error);
+    return { connected: false, status: 'NONE' as const, savedAt: null };
+  }
+}
+
+/**
+ * Forget the stored Facebook session.
+ */
+export async function disconnectFacebookSession() {
+  try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in.' };
+    }
+    await prisma.user.update({
+      where: { id: userId },
+      data: { fbSessionCookies: null, fbSessionStatus: 'NONE', fbSessionSavedAt: null }
+    });
+    revalidatePath('/dashboard');
+    revalidatePath('/settings');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to disconnect Facebook session:', error);
     return { success: false, error: error.message };
   }
 }

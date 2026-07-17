@@ -16,10 +16,46 @@ export class PlaywrightScraperService {
   private readonly prisma = new PrismaClient();
 
   /**
-   * Scrapes new posts from a Facebook Group
-   * Handles session recovery, basic rate-limiting, and parses text/images.
+   * When true, scrape failures return canned mock posts instead of throwing.
+   * Opt-in via USE_MOCK_SCRAPER=true — off by default so real failures surface.
    */
-  async scrapeGroup(groupId: string, maxPosts = 10): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
+  private useMock(): boolean {
+    return process.env.USE_MOCK_SCRAPER === 'true';
+  }
+
+  /**
+   * Detect whether a group is publicly readable (no login) or private.
+   * Runs a tiny cookie-less Apify probe: posts returned → PUBLIC, login-wall /
+   * error / empty → PRIVATE. Defaults to PRIVATE when it can't tell (safe: the
+   * UI then prompts a Facebook login rather than silently failing).
+   */
+  async detectGroupVisibility(url: string): Promise<'PUBLIC' | 'PRIVATE'> {
+    const apifyToken = process.env.APIFY_API_TOKEN;
+    if (!apifyToken) {
+      this.logger.warn('No APIFY_API_TOKEN — cannot probe visibility, defaulting to PRIVATE.');
+      return 'PRIVATE';
+    }
+    try {
+      const posts = await this.scrapeGroupWithApify(url, { maxPosts: 3, token: apifyToken, cookiesJson: null });
+      return posts.length > 0 ? 'PUBLIC' : 'PRIVATE';
+    } catch (error: any) {
+      this.logger.log(`Visibility probe treated as PRIVATE: ${error?.message || error}`);
+      return 'PRIVATE';
+    }
+  }
+
+  /**
+   * Scrapes recent posts from a Facebook Group.
+   * @param opts.sinceDays  only posts newer than N days (default 30)
+   * @param opts.maxPosts   hard upper bound on posts (default 100)
+   * @param opts.cookiesJson decrypted per-owner FB cookie JSON (private groups)
+   */
+  async scrapeGroup(
+    groupId: string,
+    opts: { sinceDays?: number; maxPosts?: number; cookiesJson?: string | null } = {}
+  ): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
+    const { sinceDays = 30, maxPosts = 100, cookiesJson = null } = opts;
+
     const group = await this.prisma.facebookGroup.findUnique({
       where: { id: groupId }
     });
@@ -33,8 +69,13 @@ export class PlaywrightScraperService {
     if (apifyToken) {
       this.logger.log(`APIFY_API_TOKEN detected. Scraping group via Apify API...`);
       try {
-        const posts = await this.scrapeGroupWithApify(group.url, maxPosts, apifyToken);
-        
+        const posts = await this.scrapeGroupWithApify(group.url, {
+          maxPosts,
+          token: apifyToken,
+          sinceDays,
+          cookiesJson
+        });
+
         // Auto-approve admin verification status since scrape was successful
         await this.prisma.facebookGroup.update({
           where: { id: group.id },
@@ -49,26 +90,32 @@ export class PlaywrightScraperService {
             status: 'SUCCESS',
             postsScraped: posts.length,
             postsImported: posts.length,
-            groupId: group.id
+            groupId: group.id,
+            completedAt: new Date()
           }
         });
 
         return posts;
       } catch (error: any) {
         this.logger.error(`Apify scraping task failed: ${error?.message || error}`);
-        this.logger.log('Engaging mock classified fallback items...');
-        const mockPosts = this.getMockPosts();
-        
+
+        // Record the real failure instead of masking it as a mock "success".
         await this.prisma.scrapingLog.create({
           data: {
-            status: 'SUCCESS',
-            postsScraped: mockPosts.length,
-            postsImported: mockPosts.length,
-            groupId: group.id
+            status: 'FAILED',
+            postsScraped: 0,
+            postsImported: 0,
+            errorMessage: String(error?.message || error),
+            groupId: group.id,
+            completedAt: new Date()
           }
         });
-        
-        return mockPosts;
+
+        if (this.useMock()) {
+          this.logger.log('USE_MOCK_SCRAPER set — returning mock classified fallback items.');
+          return this.getMockPosts();
+        }
+        throw error;
       }
     }
 
@@ -120,7 +167,9 @@ export class PlaywrightScraperService {
 
       // Inject Facebook Session Cookies to authenticate automated scrapers (only if not reusing existing Chrome context)
       if (!chromeCdpUrl) {
-        const fbCookiesRaw = process.env.FB_COOKIES;
+        // Prefer the per-owner cookies passed in for this sync; fall back to a
+        // global FB_COOKIES env var for local/dev use.
+        const fbCookiesRaw = cookiesJson || process.env.FB_COOKIES;
         if (fbCookiesRaw) {
           try {
             const rawCookies = JSON.parse(fbCookiesRaw);
@@ -196,30 +245,7 @@ export class PlaywrightScraperService {
         // Re-check if we are still on the login page
         if (page.url().includes('/login') || page.url().includes('login.php') || await page.$('input[name="email"]')) {
           this.logger.warn('Facebook Login page hit. Session cookies required.');
-          try {
-            const fs = require('fs');
-            const path = require('path');
-            const scratchDir = '/Users/Goga.Gabunia/.gemini/antigravity/brain/a442007f-0abf-42f5-92a4-f14611ea6211';
-            
-            const pageContent = await page.content();
-            const pageText = await page.evaluate(() => document.body?.innerText || '');
-
-            // Save screenshot
-            const screenshotPath = path.join(scratchDir, 'login-failed.png');
-            await page.screenshot({ path: screenshotPath, fullPage: false });
-            this.logger.log(`Saved login failure screenshot to: ${screenshotPath}`);
-
-            // Save page HTML
-            const htmlPath = path.join(scratchDir, 'login-failed.html');
-            fs.writeFileSync(htmlPath, pageContent);
-
-            // Save page text
-            const textPath = path.join(scratchDir, 'login-failed.txt');
-            fs.writeFileSync(textPath, pageText);
-          } catch (err: any) {
-            this.logger.error(`Failed to save login failure debug artifacts: ${err.message}`);
-          }
-          throw new Error('Facebook authentication session expired or cookies not provided.');
+          throw new Error('FB_AUTH_REQUIRED: Facebook authentication session expired or cookies not provided.');
         }
       }
 
@@ -352,19 +378,25 @@ export class PlaywrightScraperService {
 
     } catch (error: any) {
       this.logger.warn(`Scraping task encountered a rate limit or login wall: ${error?.message || error}`);
-      this.logger.log('Engaging high-fidelity local mock classified fallback items...');
-      
-      const mockPosts = this.getMockPosts();
-      scrapedItems.push(...mockPosts);
 
+      // Record the real failure instead of masking it as a mock "success".
       await this.prisma.scrapingLog.create({
         data: {
-          status: 'SUCCESS',
-          postsScraped: mockPosts.length,
-          postsImported: mockPosts.length,
-          groupId: group.id
+          status: 'FAILED',
+          postsScraped: 0,
+          postsImported: 0,
+          errorMessage: String(error?.message || error),
+          groupId: group.id,
+          completedAt: new Date()
         }
       });
+
+      if (this.useMock()) {
+        this.logger.log('USE_MOCK_SCRAPER set — returning mock classified fallback items.');
+        scrapedItems.push(...this.getMockPosts());
+      } else {
+        throw error; // `finally` below still closes the browser
+      }
     } finally {
       if (browser) {
         this.logger.log('Closing browser session...');
@@ -378,9 +410,13 @@ export class PlaywrightScraperService {
   /**
    * Scrapes group posts from Apify's synchronous actor execution API
    */
-  private async scrapeGroupWithApify(groupUrl: string, maxPosts: number, token: string): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
+  private async scrapeGroupWithApify(
+    groupUrl: string,
+    opts: { maxPosts: number; token: string; sinceDays?: number; cookiesJson?: string | null }
+  ): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
+    const { maxPosts, token, sinceDays, cookiesJson = null } = opts;
     this.logger.log(`Triggering Apify sync run for URL: ${groupUrl}`);
-    
+
     // Prepare input payload for whoareyouanas/facebook-group-scraper
     const input: Record<string, any> = {
       startUrls: [
@@ -389,8 +425,17 @@ export class PlaywrightScraperService {
       resultsLimit: maxPosts
     };
 
-    // If cookies are provided in environment, pass them directly to the Apify actor input
-    const fbCookiesRaw = process.env.FB_COOKIES;
+    // Only pull posts newer than N days (the "last 30 days" sync window).
+    if (sinceDays && sinceDays > 0) {
+      const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+      // Field name per the actor's input schema; both spellings sent for safety.
+      input.onlyPostsNewerThan = since.toISOString();
+      input.maxPostDate = since.toISOString();
+    }
+
+    // Prefer per-owner cookies passed in for this sync; fall back to a global
+    // FB_COOKIES env var for local/dev use.
+    const fbCookiesRaw = cookiesJson || process.env.FB_COOKIES;
     if (fbCookiesRaw) {
       try {
         const rawCookies = JSON.parse(fbCookiesRaw);

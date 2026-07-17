@@ -25,6 +25,10 @@ web-build/
 .env.production.local
 *.env*
 
+# Local dev database cluster + driver screenshots (see .claude/skills/run-groupmarket)
+.local-db/
+.screenshots/
+
 # IDEs & System files
 .DS_Store
 .vscode/
@@ -36,3 +40,6 @@ web-build/
 *.sw?
 .vercel
 .env*
+
+# TS build cache
+*.tsbuildinfo
