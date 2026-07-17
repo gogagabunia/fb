@@ -34,6 +34,10 @@ model User {
   lastName       String?
   imageUrl       String?
   role           Role             @default(USER)
+  // Facebook session for private-group scraping (AES-256-GCM encrypted cookie JSON)
+  fbSessionCookies String?        @db.Text
+  fbSessionStatus  String?        // 'ACTIVE' | 'EXPIRED' | 'NONE'
+  fbSessionSavedAt DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   groups         FacebookGroup[]
@@ -50,6 +54,7 @@ model FacebookGroup {
   isActive        Boolean          @default(true)
   adminVerified   Boolean          @default(false) // True if scraper confirmed user is admin
   adminVerifiedAt DateTime?        // When admin status was last verified
+  visibilityCheckedAt DateTime?    // When public/private visibility was last detected
   keywords        String[]         // List of custom brand/product keywords to flag
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt

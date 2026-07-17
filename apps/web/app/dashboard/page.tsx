@@ -6,6 +6,7 @@ import { getDashboardStats, triggerScrapingAction, ingestRawTextAction } from '.
 import { getCurrentUser, logoutAction } from '../auth-actions';
 import Sidebar from '../components/sidebar';
 import { DashboardSkeleton } from '../components/skeleton';
+import FacebookConnect from '../components/facebook-connect';
 
 interface ScrapingLog {
   id: string;
@@ -22,6 +23,7 @@ interface FacebookGroup {
   name: string;
   url: string;
   isActive: boolean;
+  isPublic: boolean;
   createdAt: string;
 }
 
@@ -305,6 +307,15 @@ export default function DashboardPage() {
                               >
                                 View Group Source
                               </a>
+                              <span
+                                className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                  group.isPublic
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}
+                              >
+                                {group.isPublic ? 'Public · syncs without login' : 'Private · needs Facebook'}
+                              </span>
                             </div>
                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
                           </div>
@@ -312,6 +323,9 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Facebook connection (required for private group sync) */}
+                  <FacebookConnect />
 
                   {/* Manual Paste Ingestion Portal */}
                   {stats.recentGroups.length > 0 && (

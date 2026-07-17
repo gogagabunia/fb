@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from 'database';
-import { triggerScrapingAction } from '../../../actions';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
+import { syncGroupById } from '../../../lib/sync';
 
 export async function POST(req: Request) {
   try {
@@ -28,15 +26,23 @@ export async function POST(req: Request) {
 
     const telemetry: any[] = [];
 
-    // 3. Process groups sequentially or in parallel
+    // 3. Process each active group. syncGroupById never throws for expected
+    //    conditions (private group without an active session returns
+    //    needsFacebook), so one blocked group doesn't stop the others.
     for (const group of activeGroups) {
       console.log(`[Cron Scrape] Synchronizing group "${group.name}"...`);
-      const result = await triggerScrapingAction(group.id);
-      
+      let result;
+      try {
+        result = await syncGroupById(group.id);
+      } catch (err: any) {
+        result = { success: false, error: err?.message || String(err) };
+      }
+
       telemetry.push({
         groupId: group.id,
         groupName: group.name,
         success: result.success,
+        skipped: result.needsFacebook || false,
         postsFound: result.postsFound || 0,
         listingsImported: result.listingsImported || 0,
         error: result.error || null
