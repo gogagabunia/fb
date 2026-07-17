@@ -28,26 +28,23 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
     return { success: false, error: `Group with ID ${groupId} not found` };
   }
 
-  // Private groups need a Facebook session. Preference order:
-  //   1. the owner's own connected session (primary model — spreads ban risk)
-  //   2. the shared global FB_COOKIES as a transition fallback
-  //   3. otherwise, prompt the owner to connect.
-  // Public groups sync with no login at all.
+  // Cookie preference order (applies to BOTH public and private groups, because
+  // the Apify actor needs a logged-in session to read ANY group):
+  //   1. the owner's own connected session (their account is a member)
+  //   2. the shared global FB_COOKIES fallback
+  //   3. if neither exists and the group is private → prompt the owner to connect
   let cookiesJson: string | null = null;
-  if (!group.isPublic) {
-    if (group.user?.fbSessionStatus === 'ACTIVE' && group.user?.fbSessionCookies) {
-      try {
-        cookiesJson = decrypt(group.user.fbSessionCookies);
-      } catch {
-        return { success: false, needsFacebook: true, error: 'Stored Facebook session is unreadable. Please reconnect.' };
-      }
-    } else if (!process.env.FB_COOKIES) {
-      // No per-owner session and no shared fallback available.
-      return { success: false, needsFacebook: true, error: 'Connect your Facebook account to sync this private group.' };
+  if (group.user?.fbSessionStatus === 'ACTIVE' && group.user?.fbSessionCookies) {
+    try {
+      cookiesJson = decrypt(group.user.fbSessionCookies);
+    } catch {
+      cookiesJson = null; // unreadable stored session → fall back to shared cookies
     }
-    // else: fall through with cookiesJson = null → the scraper uses the shared
-    // FB_COOKIES fallback until this owner connects their own session.
   }
+  if (!cookiesJson && !process.env.FB_COOKIES && !group.isPublic) {
+    return { success: false, needsFacebook: true, error: 'Connect your Facebook account to sync this group.' };
+  }
+  // cookiesJson (owner) or, if null, the scraper falls back to shared FB_COOKIES.
 
   const scraper = new PlaywrightScraperService();
   const parser = new OpenAIParserService();
