@@ -59,19 +59,27 @@ export async function getListingById(id: string) {
  */
 export async function getDashboardStats() {
   try {
-    const connectedGroups = await prisma.facebookGroup.count({ where: { isActive: true } });
-    const pendingPosts = await prisma.importedPost.count({ where: { status: 'PENDING' } });
-    const approvedListings = await prisma.listing.count({ where: { isActive: true } });
-    const rejectedPosts = await prisma.importedPost.count({ where: { status: 'REJECTED' } });
+    const userId = await getSession();
+    if (!userId) {
+      return { connectedGroups: 0, pendingPosts: 0, approvedListings: 0, rejectedPosts: 0, recentLogs: [], recentGroups: [] };
+    }
+
+    // Everything on the dashboard is scoped to the logged-in owner.
+    const connectedGroups = await prisma.facebookGroup.count({ where: { isActive: true, userId } });
+    const pendingPosts = await prisma.importedPost.count({ where: { status: 'PENDING', userId } });
+    const approvedListings = await prisma.listing.count({ where: { isActive: true, importedPost: { userId } } });
+    const rejectedPosts = await prisma.importedPost.count({ where: { status: 'REJECTED', userId } });
 
     const recentLogs = await prisma.scrapingLog.findMany({
       take: 6,
+      where: { group: { userId } },
       include: { group: true },
       orderBy: { startedAt: 'desc' }
     });
 
     const recentGroups = await prisma.facebookGroup.findMany({
       take: 5,
+      where: { userId },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -116,8 +124,10 @@ export async function getDashboardStats() {
  */
 export async function getImportedPosts(status?: PostStatus) {
   try {
+    const userId = await getSession();
+    if (!userId) return [];
     return await prisma.importedPost.findMany({
-      where: status ? { status } : {},
+      where: { userId, ...(status ? { status } : {}) },
       include: { group: true },
       orderBy: { scrapedAt: 'desc' }
     });
@@ -132,7 +142,10 @@ export async function getImportedPosts(status?: PostStatus) {
  */
 export async function getFacebookGroups() {
   try {
+    const userId = await getSession();
+    if (!userId) return [];
     return await prisma.facebookGroup.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' }
     });
   } catch (error) {
