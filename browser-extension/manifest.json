@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "GroupMarket Connector",
+  "version": "1.0.0",
+  "description": "Connect your logged-in Facebook session to GroupMarket with one click — no copy-paste.",
+  "permissions": ["cookies"],
+  "host_permissions": [
+    "https://*.facebook.com/",
+    "https://fb-two-rho.vercel.app/"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Connect Facebook to GroupMarket"
+  }
+}

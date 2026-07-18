@@ -62,6 +62,21 @@ export async function getSession(): Promise<string | null> {
 }
 
 /**
+ * Verify a raw session JWT (not from the cookie) and return the userId.
+ * Used by the browser-extension endpoint, which sends the app session token
+ * in an Authorization header instead of relying on the cookie.
+ */
+export async function verifySessionToken(token: string): Promise<string | null> {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return (payload.userId as string) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Destroy the session by clearing the cookie
  */
 export async function destroySession(): Promise<void> {

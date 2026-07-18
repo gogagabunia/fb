@@ -6,8 +6,8 @@ import { OpenAIParserService } from '../../api/src/parser/openai-parser.service'
 import { revalidatePath } from 'next/cache';
 import { getSession } from './lib/auth';
 import { prisma } from './lib/prisma';
-import { encrypt } from './lib/crypto';
 import { syncGroupById, type SyncResult } from './lib/sync';
+import { saveFbCookies } from './lib/fb-session';
 
 /**
  * Fetch all approved listings for the public Marketplace Feed
@@ -698,31 +698,12 @@ export async function saveFacebookSession(cookiesJson: string) {
     if (!userId) {
       return { success: false, error: 'You must be logged in.' };
     }
-
-    // Validate it is real cookie JSON containing a Facebook session.
-    let parsed: any;
-    try {
-      parsed = JSON.parse(cookiesJson);
-    } catch {
-      return { success: false, error: 'Invalid cookie data — expected a JSON array of cookies.' };
+    const result = await saveFbCookies(userId, cookiesJson);
+    if (result.success) {
+      revalidatePath('/dashboard');
+      revalidatePath('/settings');
     }
-    const cookies = Array.isArray(parsed) ? parsed : parsed?.cookies;
-    if (!Array.isArray(cookies) || !cookies.some((c: any) => c?.name === 'c_user') || !cookies.some((c: any) => c?.name === 'xs')) {
-      return { success: false, error: 'These cookies do not contain a Facebook login session (missing c_user / xs).' };
-    }
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        fbSessionCookies: encrypt(JSON.stringify(cookies)),
-        fbSessionStatus: 'ACTIVE',
-        fbSessionSavedAt: new Date()
-      }
-    });
-
-    revalidatePath('/dashboard');
-    revalidatePath('/settings');
-    return { success: true };
+    return result;
   } catch (error: any) {
     console.error('Failed to save Facebook session:', error);
     return { success: false, error: error.message };
