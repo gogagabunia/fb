@@ -417,20 +417,23 @@ export class PlaywrightScraperService {
     const { maxPosts, token, sinceDays, cookiesJson = null, noCookies = false } = opts;
     this.logger.log(`Triggering Apify sync run for URL: ${groupUrl}`);
 
-    // Prepare input payload for whoareyouanas/facebook-group-scraper
+    // Input payload matching the whoareyouanas/facebook-group-scraper schema.
+    // Field names must be exact: `maxPosts` (not resultsLimit), `viewOption`
+    // controls which posts are returned (chronological group feed).
     const input: Record<string, any> = {
       startUrls: [
         { url: groupUrl }
       ],
-      resultsLimit: maxPosts
+      maxPosts: maxPosts,
+      viewOption: 'CHRONOLOGICAL',
+      includeMedia: true,
+      includeGroupInfo: true
     };
 
     // Only pull posts newer than N days (the "last 30 days" sync window).
     if (sinceDays && sinceDays > 0) {
       const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
-      // Field name per the actor's input schema; both spellings sent for safety.
       input.onlyPostsNewerThan = since.toISOString();
-      input.maxPostDate = since.toISOString();
     }
 
     // Prefer per-owner cookies passed in for this sync; fall back to a global
