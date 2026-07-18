@@ -483,18 +483,31 @@ export class PlaywrightScraperService {
       throw new Error(`Apify scraping error (${errorItem.error}): ${errorItem.errorDescription || 'No error description provided.'}`);
     }
 
-    // Map Apify's output schema to standard post structure
+    // Map Apify's output → standard post structure. Field names are read
+    // defensively because the actor's output can vary by post type.
     return items.map((item: any) => {
-      const text = (item.text || '') as string;
-      const images = (Array.isArray(item.images) ? item.images : []) as string[];
-      const id = (item.postId || item.id || `fb-${Math.random().toString(36).substring(7)}`) as string;
+      const text = String(item.text ?? item.postText ?? item.message ?? item.content ?? item.postContent ?? '');
+
+      // Images can arrive under several keys, as strings or {url}/{src} objects.
+      const images: string[] = [];
+      for (const field of [item.images, item.media, item.attachments, item.mediaUrls, item.imageUrls]) {
+        if (Array.isArray(field)) {
+          for (const m of field) {
+            const url = typeof m === 'string' ? m : (m?.url || m?.src || m?.image || m?.thumbnail);
+            if (url && /^https?:\/\//.test(url)) images.push(url);
+          }
+        }
+      }
+
+      const id = String(item.postId ?? item.id ?? item.postUrl ?? item.url ?? item.legacyId ?? `fb-${Math.random().toString(36).substring(7)}`);
+      const author = String(item.authorName ?? item.author?.name ?? item.user?.name ?? item.ownerName ?? item.profileName ?? 'Facebook User');
 
       return {
         id,
         text,
         images: [...new Set(images)],
-        author: (item.authorName || 'Facebook User') as string,
-        title: (text.split('\n')[0].substring(0, 100) || 'Facebook Group Post') as string
+        author,
+        title: (text.split('\n')[0].substring(0, 100) || 'Facebook Group Post')
       };
     });
   }
