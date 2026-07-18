@@ -347,14 +347,20 @@ export default function AdminPage() {
                             onClick={() => setExpandedId(expandedId === post.id ? null : post.id)}
                             title="Click to see all details"
                           >
-                            <img
-                              src={
-                                post.images[0] ||
-                                'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=500'
-                              }
-                              className="w-16 h-16 object-cover rounded-lg border border-outline-variant/30 shadow-sm shrink-0"
-                              alt=""
-                            />
+                            {post.images && post.images.length > 0 ? (
+                              <img
+                                src={post.images[0]}
+                                className="w-16 h-16 object-cover rounded-lg border border-outline-variant/30 shadow-sm shrink-0"
+                                alt=""
+                              />
+                            ) : (
+                              <div
+                                className="w-16 h-16 rounded-lg border border-dashed border-outline-variant/50 bg-surface-container-low flex items-center justify-center shrink-0"
+                                title="No image on this post"
+                              >
+                                <span className="material-symbols-outlined text-on-surface-variant/60 text-[22px]">image_not_supported</span>
+                              </div>
+                            )}
                             <div className="flex flex-col min-w-0">
                               <span className="text-label-md font-bold text-primary line-clamp-1 flex items-center gap-xs">
                                 By {post.authorName}
