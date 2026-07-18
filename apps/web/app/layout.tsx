@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   description: 'Transform chaotic social media selling into a structured, searchable, and professional storefront.',
 };
 
+// Facebook scrapes (Apify sync run) take longer than the default 10s Hobby
+// limit, so raise the function budget to the Hobby max. Cascades to routes and
+// the server actions invoked from them.
+export const maxDuration = 60;
+
 export default function RootLayout({
   children,
 }: {

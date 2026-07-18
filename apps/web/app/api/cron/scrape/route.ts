@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { syncGroupById } from '../../../lib/sync';
 
+// Scrapes are slow (Apify sync run) — give the cron the Hobby max budget.
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   try {
     // 1. Verify cron authorization signature
