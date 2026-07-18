@@ -483,30 +483,33 @@ export class PlaywrightScraperService {
       throw new Error(`Apify scraping error (${errorItem.error}): ${errorItem.errorDescription || 'No error description provided.'}`);
     }
 
-    // Map Apify's output → standard post structure. Field names are read
-    // defensively because the actor's output can vary by post type.
+    // Map the whoareyouanas actor's output to our standard post structure.
+    // Real field names (confirmed from the actor's dataset):
+    //   postId, postUrl, authorName, text, images[], videos[], timestamp
+    // We key on `postUrl` (the real clickable group-post link) so the stored id
+    // is unmistakably a group post and "View original" works.
     return items.map((item: any) => {
-      const text = String(item.text ?? item.postText ?? item.message ?? item.content ?? item.postContent ?? '');
+      const text = String(item.text ?? '');
+      const postUrl = String(item.postUrl ?? '');
 
-      // Images can arrive under several keys, as strings or {url}/{src} objects.
       const images: string[] = [];
-      for (const field of [item.images, item.media, item.attachments, item.mediaUrls, item.imageUrls]) {
+      for (const field of [item.images, item.videos]) {
         if (Array.isArray(field)) {
           for (const m of field) {
-            const url = typeof m === 'string' ? m : (m?.url || m?.src || m?.image || m?.thumbnail);
+            const url = typeof m === 'string' ? m : (m?.url || m?.src || '');
             if (url && /^https?:\/\//.test(url)) images.push(url);
           }
         }
       }
 
-      const id = String(item.postId ?? item.id ?? item.postUrl ?? item.url ?? item.legacyId ?? `fb-${Math.random().toString(36).substring(7)}`);
-      const author = String(item.authorName ?? item.author?.name ?? item.user?.name ?? item.ownerName ?? item.profileName ?? 'Facebook User');
+      // Identifier / dedup key: prefer the full post URL; fall back to postId.
+      const id = postUrl || String(item.postId ?? `fb-${Math.random().toString(36).substring(7)}`);
 
       return {
         id,
         text,
         images: [...new Set(images)],
-        author,
+        author: String(item.authorName || 'Facebook User'),
         title: (text.split('\n')[0].substring(0, 100) || 'Facebook Group Post')
       };
     });

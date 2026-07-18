@@ -88,6 +88,10 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
   const { sendAdminModerationAlert } = require('./email');
 
   for (const post of rawPosts) {
+    // Skip empty / media-only posts — they can't be a classified listing and
+    // only clutter the moderation queue.
+    if (!post.text || post.text.trim().length < 10) continue;
+
     const parsed = await parser.parseRawPost(post.text);
     if (parsed.isListing) {
       importedCount++;
