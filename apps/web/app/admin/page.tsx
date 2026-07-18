@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
 import {
   getImportedPosts,
@@ -56,6 +56,8 @@ export default function AdminPage() {
 
   const [rejectPost, setRejectPost] = useState<ImportedPost | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [user, setUser] = useState<{ firstName: string | null; lastName: string | null; email: string } | null>(null);
@@ -337,9 +339,14 @@ export default function AdminPage() {
                     </tr>
                   ) : (
                     filteredPosts.map((post) => (
-                      <tr key={post.id} className="hover:bg-surface-container-low/50 transition-colors">
+                    <Fragment key={post.id}>
+                      <tr className="hover:bg-surface-container-low/50 transition-colors">
                         <td className="px-lg py-md align-top">
-                          <div className="flex gap-md max-w-lg">
+                          <div
+                            className="flex gap-md max-w-lg cursor-pointer"
+                            onClick={() => setExpandedId(expandedId === post.id ? null : post.id)}
+                            title="Click to see all details"
+                          >
                             <img
                               src={
                                 post.images[0] ||
@@ -349,8 +356,11 @@ export default function AdminPage() {
                               alt=""
                             />
                             <div className="flex flex-col min-w-0">
-                              <span className="text-label-md font-bold text-primary line-clamp-1">
+                              <span className="text-label-md font-bold text-primary line-clamp-1 flex items-center gap-xs">
                                 By {post.authorName}
+                                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                                  {expandedId === post.id ? 'expand_less' : 'expand_more'}
+                                </span>
                               </span>
                               <span className="text-body-sm text-on-surface-variant font-medium mt-xs">
                                 Classified Price:{' '}
@@ -358,8 +368,8 @@ export default function AdminPage() {
                                   {post.priceScraped ? `$${post.priceScraped.toLocaleString()}` : 'Not Scraped'}
                                 </span>
                               </span>
-                              <p className="text-body-sm text-on-surface-variant/80 mt-sm line-clamp-2 italic">
-                                "{post.rawText}"
+                              <p className={`text-body-sm text-on-surface-variant/80 mt-sm italic ${expandedId === post.id ? '' : 'line-clamp-2'}`}>
+                                "{post.rawText || '(no text)'}"
                               </p>
                               {post.rejectionReason && (
                                 <div className="mt-sm p-sm bg-red-50 text-red-700 rounded-lg text-xs font-semibold flex items-center gap-xs">
@@ -367,6 +377,9 @@ export default function AdminPage() {
                                   Reason: {post.rejectionReason}
                                 </div>
                               )}
+                              <span className="text-[11px] text-secondary font-semibold mt-xs">
+                                {expandedId === post.id ? 'Hide details' : 'Show all details'}
+                              </span>
                             </div>
                           </div>
                         </td>
@@ -408,6 +421,71 @@ export default function AdminPage() {
                           </div>
                         </td>
                       </tr>
+                      {expandedId === post.id && (
+                        <tr className="bg-surface-container-low/40">
+                          <td colSpan={4} className="px-lg py-lg">
+                            <div className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-lg space-y-lg">
+                              <h4 className="text-label-md font-bold text-primary uppercase tracking-wide">Post details</h4>
+
+                              {/* Full text */}
+                              <div>
+                                <span className="text-xs font-bold text-on-surface-variant uppercase">Full text</span>
+                                <p className="text-body-md text-on-surface mt-xs whitespace-pre-wrap">
+                                  {post.rawText || '(no text captured)'}
+                                </p>
+                              </div>
+
+                              {/* Attribute grid */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
+                                {[
+                                  ['Author', post.authorName || '—'],
+                                  ['Price scraped', post.priceScraped != null ? `$${post.priceScraped.toLocaleString()}` : 'Not found'],
+                                  ['Group', post.group?.name || '—'],
+                                  ['Status', post.status],
+                                  ['Scraped at', new Date(post.scrapedAt).toLocaleString()],
+                                  ['Images', String(post.images?.length || 0)],
+                                ].map(([label, value]) => (
+                                  <div key={label as string} className="p-sm rounded-lg bg-surface-container-low/50">
+                                    <span className="text-[11px] font-bold text-on-surface-variant uppercase block">{label}</span>
+                                    <span className="text-body-sm text-on-surface font-medium break-words">{value}</span>
+                                  </div>
+                                ))}
+                                <div className="p-sm rounded-lg bg-surface-container-low/50">
+                                  <span className="text-[11px] font-bold text-on-surface-variant uppercase block">Author profile</span>
+                                  {post.authorProfile ? (
+                                    <a href={post.authorProfile} target="_blank" rel="noreferrer" className="text-body-sm text-secondary font-medium hover:underline break-all">Open profile</a>
+                                  ) : (
+                                    <span className="text-body-sm text-on-surface-variant">—</span>
+                                  )}
+                                </div>
+                                <div className="p-sm rounded-lg bg-surface-container-low/50 sm:col-span-2">
+                                  <span className="text-[11px] font-bold text-on-surface-variant uppercase block">Original post</span>
+                                  {post.fbPostId ? (
+                                    <a href={post.fbPostId} target="_blank" rel="noreferrer" className="text-body-sm text-secondary font-medium hover:underline break-all">{post.fbPostId}</a>
+                                  ) : (
+                                    <span className="text-body-sm text-on-surface-variant">—</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Image gallery */}
+                              {post.images && post.images.length > 0 && (
+                                <div>
+                                  <span className="text-xs font-bold text-on-surface-variant uppercase">Images ({post.images.length})</span>
+                                  <div className="flex flex-wrap gap-sm mt-xs">
+                                    {post.images.map((img, i) => (
+                                      <a key={i} href={img} target="_blank" rel="noreferrer">
+                                        <img src={img} alt="" className="w-24 h-24 object-cover rounded-lg border border-outline-variant/30" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                     ))
                   )}
                 </tbody>
