@@ -108,19 +108,40 @@ export default function AdminPage() {
       return;
     }
     setSyncing(true);
-    showToast('Starting ingestion and AI parsing...', 'info');
+    showToast(`Starting ingestion and AI parsing for ${groups.length} group${groups.length !== 1 ? 's' : ''}...`, 'info');
     try {
       let totalFound = 0;
       let totalImported = 0;
-      // Sync first group for demo/test purposes
-      const targetGroup = groups[0];
-      const result = await triggerScrapingAction(targetGroup.id);
-      if (result.success) {
-        totalFound = result.postsFound || 0;
-        totalImported = result.listingsImported || 0;
-        showToast(`Sync Complete! Found ${totalFound} posts, imported ${totalImported} listings into PENDING queue.`, 'success');
+      const failures: string[] = [];
+
+      // Every connected group, not just the first. This used to sync groups[0]
+      // only ("for demo/test purposes"), so anyone with more than one group had
+      // the rest silently skipped on every manual sync.
+      for (const group of groups) {
+        // One group failing (an expired Facebook session, say) must not stop
+        // the others, so each is handled on its own.
+        try {
+          const result = await triggerScrapingAction(group.id);
+          if (result.success) {
+            totalFound += result.postsFound || 0;
+            totalImported += result.listingsImported || 0;
+          } else {
+            failures.push(`${group.name}: ${result.error || 'unknown error'}`);
+          }
+        } catch (err: any) {
+          failures.push(`${group.name}: ${err?.message || 'unknown error'}`);
+        }
+      }
+
+      if (failures.length === groups.length) {
+        showToast(`Sync failed. ${failures[0]}`, 'error');
+      } else if (failures.length > 0) {
+        showToast(
+          `Synced ${groups.length - failures.length}/${groups.length} groups — found ${totalFound} posts, imported ${totalImported}. Failed: ${failures.join('; ')}`,
+          'info'
+        );
       } else {
-        throw new Error(result.error);
+        showToast(`Sync complete! Found ${totalFound} posts, imported ${totalImported} new listings into the PENDING queue.`, 'success');
       }
     } catch (error: any) {
       console.error('Scraping failed:', error);
