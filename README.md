@@ -11,8 +11,6 @@ and publishes approved items as marketplace listings after human moderation.
 | `apps/api/src` | Scraper + AI parser services, imported directly by `apps/web` |
 | `packages/database` | Prisma schema and generated client |
 | `browser-extension` | Chrome MV3 extension for one-click Facebook connect |
-| `apps/mobile` | Expo client (unmaintained; points at `localhost:3000`) |
-| `*.html`, `vite.config.js` | Pre-Next static prototype, superseded by `apps/web` |
 
 ## Setup
 
@@ -90,7 +88,6 @@ it (see the environment table above).
 
 ## Known gaps
 
-- No test suite and no CI.
 - `apps/web/next.config.mjs` sets `ignoreBuildErrors` and `ignoreDuringBuilds`,
   so TypeScript and ESLint failures do not block a deploy.
 - The login rate limiter (`app/lib/rate-limiter.ts`) is in-process, so on
