@@ -140,17 +140,33 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
 
   const listings = parsedPosts.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
+  let newCount = 0;
+
   for (const { post, parsed } of listings) {
-    const imported = await prisma.importedPost.upsert({
+    const existing = await prisma.importedPost.findUnique({
       where: { fbPostId: post.id },
-      update: {
-        rawText: post.text,
-        images: post.images,
-        authorName: post.author,
-        priceScraped: parsed.price || null,
-        status: 'PENDING'
-      },
-      create: {
+      select: { id: true }
+    });
+
+    if (existing) {
+      // Refresh the scraped content, but never touch `status`. This was an
+      // upsert that always wrote status: 'PENDING', so every re-sync dragged
+      // already-approved and already-rejected posts back into the moderation
+      // queue — the same posts reappearing after each run.
+      await prisma.importedPost.update({
+        where: { id: existing.id },
+        data: {
+          rawText: post.text,
+          images: post.images,
+          authorName: post.author,
+          priceScraped: parsed.price || null
+        }
+      });
+      continue; // already seen — no second moderation alert
+    }
+
+    const imported = await prisma.importedPost.create({
+      data: {
         fbPostId: post.id,
         rawText: post.text,
         images: post.images,
@@ -161,6 +177,7 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
         userId: group.userId
       }
     });
+    newCount++;
 
     // Dispatch background email alert (non-blocking)
     sendAdminModerationAlert({
@@ -178,12 +195,14 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
     );
   }
 
-  // Record the true import count against the log the scraper opened.
+  // Record the true import count against the log the scraper opened. Counts
+  // only posts newly added to the queue — re-syncs of posts already seen are
+  // not imports, and reporting them as such overstated every run.
   if (scraper.lastScrapingLogId) {
     await prisma.scrapingLog
       .update({
         where: { id: scraper.lastScrapingLogId },
-        data: { postsImported: listings.length }
+        data: { postsImported: newCount }
       })
       .catch((err: any) => console.error('Failed to update scraping log import count:', err));
   }
@@ -191,7 +210,7 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
   return {
     success: true,
     postsFound: rawPosts.length,
-    listingsImported: listings.length,
+    listingsImported: newCount,
     postsSkipped: skipped
   };
 }
