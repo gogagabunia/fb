@@ -1,11 +1,9 @@
 'use server';
 
-import { PrismaClient } from 'database';
 import { hashPassword, verifyPassword, createSession, destroySession, getSession } from './lib/auth';
 import { redirect } from 'next/navigation';
 import { authRateLimiter } from './lib/rate-limiter';
-
-const prisma = new PrismaClient();
+import { prisma } from './lib/prisma';
 
 /**
  * Register a new user with email and password

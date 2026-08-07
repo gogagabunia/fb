@@ -48,18 +48,26 @@ export async function POST(req: Request) {
         skipped: result.needsFacebook || false,
         postsFound: result.postsFound || 0,
         listingsImported: result.listingsImported || 0,
+        // Posts left unparsed because the per-group time budget ran out. Never
+        // let truncation look like "nothing more to import".
+        postsUnparsed: result.postsSkipped || 0,
         error: result.error || null
       });
     }
 
     const totalImported = telemetry.reduce((sum, item) => sum + item.listingsImported, 0);
-    console.log(`[Cron Scrape] Scheduled synchronization completed. Imported ${totalImported} new listings.`);
+    const totalUnparsed = telemetry.reduce((sum, item) => sum + item.postsUnparsed, 0);
+    console.log(
+      `[Cron Scrape] Scheduled synchronization completed. Imported ${totalImported} new listings` +
+        (totalUnparsed > 0 ? `, ${totalUnparsed} post(s) left unparsed (time budget).` : '.')
+    );
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       groupsProcessed: activeGroups.length,
       newListingsImported: totalImported,
+      postsUnparsed: totalUnparsed,
       details: telemetry
     });
   } catch (error: any) {

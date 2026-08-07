@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getFavoritedIdsAction, toggleFavoriteAction, recordAnalyticsEventAction } from '../../actions';
+import { isFeaturedNow } from '../../lib/featured';
 
 interface Listing {
   id: string;
@@ -16,6 +17,9 @@ interface Listing {
   contactUrl: string;
   originalPostUrl: string;
   createdAt: any;
+  isActive?: boolean;
+  isFeatured?: boolean;
+  featuredUntil?: string | Date | null;
   categoryRel?: {
     name: string;
     slug: string;
@@ -42,7 +46,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
   const [activeImage, setActiveImage] = useState(imageGallery[0]);
   const [saved, setSaved] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<'success' | 'info'>('success');
+  const [toastType, setToastType] = useState<'success' | 'info' | 'error'>('success');
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [promotedState, setPromotedState] = useState(false);
@@ -54,7 +58,9 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
     if (params.get('checkout') === 'success') {
       setPromotedState(true);
       setToastType('success');
-      setToastMessage('Listing promoted successfully! Now featured.');
+      // The promotion itself is applied by the Stripe webhook once payment
+      // settles, which can land a moment after this redirect.
+      setToastMessage('Payment received — your listing is being featured.');
       setTimeout(() => setToastMessage(null), 4000);
     }
   }, []);
@@ -68,14 +74,22 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
         body: JSON.stringify({ listingId: listing.id })
       });
       const data = await res.json();
-      if (data.url) {
+      if (res.ok && data.url) {
         window.location.href = data.url;
       } else {
+        // Surface the reason instead of failing silently — the endpoint now
+        // rejects unauthenticated callers, non-owners, and unconfigured payments.
         console.error('Failed to create checkout session:', data.error);
+        setToastType('error');
+        setToastMessage(data.error || 'Could not start checkout. Please try again.');
+        setTimeout(() => setToastMessage(null), 5000);
         setPromoting(false);
       }
     } catch (err) {
       console.error('Promotion failed:', err);
+      setToastType('error');
+      setToastMessage('Could not start checkout. Please try again.');
+      setTimeout(() => setToastMessage(null), 5000);
       setPromoting(false);
     }
   };
@@ -156,10 +170,10 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
       {toastMessage && (
         <div className="fixed bottom-lg right-lg z-50 animate-bounce">
           <div className={`px-md py-sm rounded-lg shadow-lg flex items-center gap-sm text-white ${
-            toastType === 'success' ? 'bg-secondary' : 'bg-primary'
+            toastType === 'success' ? 'bg-secondary' : toastType === 'error' ? 'bg-red-600' : 'bg-primary'
           }`}>
             <span className="material-symbols-outlined">
-              {toastType === 'success' ? 'check_circle' : 'info'}
+              {toastType === 'success' ? 'check_circle' : toastType === 'error' ? 'error' : 'info'}
             </span>
             <span className="text-label-md font-medium">{toastMessage}</span>
           </div>
@@ -439,7 +453,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                 <p className="text-body-xs text-on-surface-variant leading-relaxed mb-md">
                   Boost your listing's visibility! Make it featured to place it in the asymmetric bento grid at the top of the Marketplace.
                 </p>
-                {listing.isFeatured || promotedState ? (
+                {isFeaturedNow(listing) || promotedState ? (
                   <div className="flex items-center gap-xs py-sm justify-center bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-label-sm font-bold">
                     <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
                     Featured Listing Active

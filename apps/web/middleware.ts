@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { lazySecret } from './app/lib/secrets';
 
 const SESSION_COOKIE_NAME = 'groupmarket_session';
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'groupmarket-default-secret-change-in-production-2026'
-);
+const resolveJwtSecret = lazySecret('JWT_SECRET', 'groupmarket-insecure-dev-secret');
+const jwtKey = () => new TextEncoder().encode(resolveJwtSecret());
 
 // Routes that require authentication
 const PROTECTED_ROUTES = ['/dashboard', '/admin', '/add-group'];
@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
 
   if (token) {
     try {
-      await jwtVerify(token, JWT_SECRET);
+      await jwtVerify(token, jwtKey());
       isAuthenticated = true;
     } catch {
       // Token is invalid or expired — treat as unauthenticated

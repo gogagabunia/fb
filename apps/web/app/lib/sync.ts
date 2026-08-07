@@ -7,8 +7,39 @@ export interface SyncResult {
   success: boolean;
   postsFound?: number;
   listingsImported?: number;
+  postsSkipped?: number;
   needsFacebook?: boolean;
   error?: string;
+}
+
+/** How many posts to run through the AI parser at once. */
+const PARSE_CONCURRENCY = 5;
+
+/**
+ * Wall-clock budget for the parsing phase. The Vercel cron route caps out at
+ * 60s, and parsing used to be a fully sequential await per post (up to 100),
+ * which blew the budget and killed every group later in the cron's loop.
+ */
+const PARSE_BUDGET_MS = 35_000;
+
+/** Run `worker` over `items` with a bounded number of concurrent calls. */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await worker(items[index]);
+    }
+  });
+
+  await Promise.all(runners);
+  return results;
 }
 
 /**
@@ -84,47 +115,83 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
     return { success: false, error: msg };
   }
 
-  let importedCount = 0;
   const { sendAdminModerationAlert } = require('./email');
 
-  for (const post of rawPosts) {
-    // Skip empty / media-only posts — they can't be a classified listing and
-    // only clutter the moderation queue.
-    if (!post.text || post.text.trim().length < 10) continue;
+  // Skip empty / media-only posts — they can't be a classified listing and only
+  // clutter the moderation queue.
+  const candidates = rawPosts.filter(post => post.text && post.text.trim().length >= 10);
 
-    const parsed = await parser.parseRawPost(post.text);
-    if (parsed.isListing) {
-      importedCount++;
-      const imported = await prisma.importedPost.upsert({
-        where: { fbPostId: post.id },
-        update: {
-          rawText: post.text,
-          images: post.images,
-          authorName: post.author,
-          priceScraped: parsed.price || null,
-          status: 'PENDING'
-        },
-        create: {
-          fbPostId: post.id,
-          rawText: post.text,
-          images: post.images,
-          authorName: post.author,
-          priceScraped: parsed.price || null,
-          status: 'PENDING',
-          groupId: group.id,
-          userId: group.userId
-        }
-      });
+  const deadline = Date.now() + PARSE_BUDGET_MS;
+  let skipped = 0;
 
-      // Dispatch background email alert (non-blocking)
-      sendAdminModerationAlert({
-        id: imported.id,
-        authorName: imported.authorName,
-        rawText: imported.rawText,
-        groupName: group.name
-      }).catch((err: any) => console.error('Failed to trigger admin email notifier:', err));
+  const parsedPosts = await mapWithConcurrency(candidates, PARSE_CONCURRENCY, async post => {
+    if (Date.now() > deadline) {
+      skipped++;
+      return null;
     }
+    try {
+      const parsed = await parser.parseRawPost(post.text);
+      return parsed.isListing ? { post, parsed } : null;
+    } catch (parseErr: any) {
+      console.error(`Failed to parse post ${post.id}:`, parseErr?.message || parseErr);
+      return null;
+    }
+  });
+
+  const listings = parsedPosts.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  for (const { post, parsed } of listings) {
+    const imported = await prisma.importedPost.upsert({
+      where: { fbPostId: post.id },
+      update: {
+        rawText: post.text,
+        images: post.images,
+        authorName: post.author,
+        priceScraped: parsed.price || null,
+        status: 'PENDING'
+      },
+      create: {
+        fbPostId: post.id,
+        rawText: post.text,
+        images: post.images,
+        authorName: post.author,
+        priceScraped: parsed.price || null,
+        status: 'PENDING',
+        groupId: group.id,
+        userId: group.userId
+      }
+    });
+
+    // Dispatch background email alert (non-blocking)
+    sendAdminModerationAlert({
+      id: imported.id,
+      authorName: imported.authorName,
+      rawText: imported.rawText,
+      groupName: group.name
+    }).catch((err: any) => console.error('Failed to trigger admin email notifier:', err));
   }
 
-  return { success: true, postsFound: rawPosts.length, listingsImported: importedCount };
+  if (skipped > 0) {
+    console.warn(
+      `[Sync] Parsing budget (${PARSE_BUDGET_MS}ms) exhausted for group "${group.name}" — ` +
+        `${skipped} post(s) left unparsed. They will be retried on the next sync.`
+    );
+  }
+
+  // Record the true import count against the log the scraper opened.
+  if (scraper.lastScrapingLogId) {
+    await prisma.scrapingLog
+      .update({
+        where: { id: scraper.lastScrapingLogId },
+        data: { postsImported: listings.length }
+      })
+      .catch((err: any) => console.error('Failed to update scraping log import count:', err));
+  }
+
+  return {
+    success: true,
+    postsFound: rawPosts.length,
+    listingsImported: listings.length,
+    postsSkipped: skipped
+  };
 }

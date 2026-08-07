@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from 'database';
+import { prisma } from '../../lib/prisma';
+import { getSession } from '../../lib/auth';
+import { promoteListing, PROMOTION_PRICE_CENTS, PROMOTION_DAYS } from '../../lib/promotions';
 
-const prisma = new PrismaClient();
-
+/**
+ * Start a Stripe Checkout session to promote a listing.
+ *
+ * The listing is only marked featured by the Stripe webhook, after payment
+ * actually succeeds — see app/api/stripe/webhook/route.ts. This route never
+ * grants the promotion itself.
+ */
 export async function POST(req: Request) {
   try {
+    const userId = await getSession();
+    if (!userId) {
+      return NextResponse.json({ error: 'You must be logged in to promote a listing.' }, { status: 401 });
+    }
+
     const { listingId } = await req.json();
 
     if (!listingId) {
@@ -12,70 +24,68 @@ export async function POST(req: Request) {
     }
 
     const listing = await prisma.listing.findUnique({
-      where: { id: listingId }
+      where: { id: listingId },
+      include: { importedPost: { select: { userId: true } } }
     });
 
     if (!listing) {
       return NextResponse.json({ error: 'Listing not found.' }, { status: 404 });
     }
 
-    // Stripe checkout configuration keys
+    // Only the owner may pay to promote their own listing.
+    if (listing.importedPost.userId !== userId) {
+      return NextResponse.json({ error: 'Listing not found.' }, { status: 404 });
+    }
+
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     if (stripeKey) {
-      try {
-        const stripe = require('stripe')(stripeKey);
-        
-        // Create actual Stripe Checkout Session for promotion
-        const session = await stripe.checkout.sessions.create({
-          payment_method_types: ['card'],
-          line_items: [
-            {
-              price_data: {
-                currency: 'usd',
-                product_data: {
-                  name: `Feature Promotion: "${listing.title}"`,
-                  description: 'Boost your listing visibility in the asymmetric featured Bento marketplace grid for 7 days.',
-                },
-                unit_amount: 1999, // $19.99
-              },
-              quantity: 1,
-            },
-          ],
-          mode: 'payment',
-          success_url: `${appUrl}/listing-detail/${listingId}?checkout=success`,
-          cancel_url: `${appUrl}/listing-detail/${listingId}?checkout=cancel`,
-          metadata: {
-            listingId: listingId,
-            action: 'PROMOTE_LISTING'
-          }
-        });
+      const stripe = require('stripe')(stripeKey);
 
-        return NextResponse.json({ success: true, url: session.url });
-      } catch (stripeError: any) {
-        console.error('[Stripe Checkout] API Error, falling back to sandbox simulator:', stripeError);
-      }
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: `Feature Promotion: "${listing.title}"`,
+                description: `Boost your listing visibility in the featured marketplace grid for ${PROMOTION_DAYS} days.`,
+              },
+              unit_amount: PROMOTION_PRICE_CENTS,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${appUrl}/listing-detail/${listingId}?checkout=success`,
+        cancel_url: `${appUrl}/listing-detail/${listingId}?checkout=cancel`,
+        metadata: {
+          listingId: listingId,
+          action: 'PROMOTE_LISTING'
+        }
+      });
+
+      return NextResponse.json({ success: true, url: session.url });
     }
 
-    // Graceful developer environment Stripe simulator
-    console.log(`\n--- 💳 STRIPE CHECKOUT SIMULATOR ---`);
-    console.log(`Product: Featured Promotion for "${listing.title}"`);
-    console.log(`Price: $19.99 USD`);
-    console.log(`Target Listing ID: ${listingId}`);
-    console.log(`-----------------------------------\n`);
+    // No Stripe key configured. This previously fell through to a "simulator"
+    // that set isFeatured directly — i.e. any caller could hand themselves a
+    // paid promotion for free. The simulator is now explicit opt-in and refuses
+    // to run in production.
+    const simulationAllowed =
+      process.env.NODE_ENV !== 'production' && process.env.ALLOW_SIMULATED_CHECKOUT === 'true';
 
-    // Instantly promote the listing in PostgreSQL
-    const oneWeekFromNow = new Date();
-    oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+    if (!simulationAllowed) {
+      return NextResponse.json(
+        { error: 'Payments are not configured. Set STRIPE_SECRET_KEY to enable promotions.' },
+        { status: 503 }
+      );
+    }
 
-    await prisma.listing.update({
-      where: { id: listingId },
-      data: {
-        isFeatured: true,
-        featuredUntil: oneWeekFromNow
-      }
-    });
+    console.log(`[Checkout] ALLOW_SIMULATED_CHECKOUT set — promoting "${listing.title}" without payment (dev only).`);
+    await promoteListing(listingId);
 
     return NextResponse.json({
       success: true,
@@ -84,6 +94,6 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error('[Stripe Checkout] Session creation failed:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Could not start checkout.' }, { status: 500 });
   }
 }

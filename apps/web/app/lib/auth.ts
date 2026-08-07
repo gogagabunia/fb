@@ -1,11 +1,11 @@
 import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
+import { lazySecret } from './secrets';
 
 const SESSION_COOKIE_NAME = 'groupmarket_session';
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'groupmarket-default-secret-change-in-production-2026'
-);
+const resolveJwtSecret = lazySecret('JWT_SECRET', 'groupmarket-insecure-dev-secret');
+const jwtKey = () => new TextEncoder().encode(resolveJwtSecret());
 const SESSION_DURATION = 60 * 60 * 24 * 7; // 7 days in seconds
 
 /**
@@ -32,7 +32,7 @@ export async function createSession(userId: string): Promise<void> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(expiresAt)
-    .sign(JWT_SECRET);
+    .sign(jwtKey());
 
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
@@ -54,7 +54,7 @@ export async function getSession(): Promise<string | null> {
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, jwtKey());
     return (payload.userId as string) || null;
   } catch {
     return null;
@@ -69,7 +69,7 @@ export async function getSession(): Promise<string | null> {
 export async function verifySessionToken(token: string): Promise<string | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, jwtKey());
     return (payload.userId as string) || null;
   } catch {
     return null;

@@ -1,13 +1,43 @@
 'use server';
 
 import { PostStatus } from 'database';
-import { PlaywrightScraperService } from '../../api/src/scrapers/playwright-scraper.service';
-import { OpenAIParserService } from '../../api/src/parser/openai-parser.service';
 import { revalidatePath } from 'next/cache';
 import { getSession } from './lib/auth';
 import { prisma } from './lib/prisma';
 import { syncGroupById, type SyncResult } from './lib/sync';
 import { saveFbCookies } from './lib/fb-session';
+
+/** Build a URL-safe slug from a category name. */
+function slugifyCategory(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'category';
+}
+
+/**
+ * Resolve the Category row for `name`, creating it if it doesn't exist yet.
+ *
+ * Both `name` and `slug` are unique, so a naive find-then-create breaks in two
+ * ways this handles: two approvals racing on the same new category, and two
+ * different names slugifying to the same slug ("Real Estate" / "Real-Estate").
+ */
+async function findOrCreateCategory(name: string) {
+  const existing = await prisma.category.findUnique({ where: { name } });
+  if (existing) return existing;
+
+  const base = slugifyCategory(name);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = attempt === 0 ? base : `${base}-${attempt + 1}`;
+    try {
+      return await prisma.category.create({ data: { name, slug } });
+    } catch (error: any) {
+      if (error?.code !== 'P2002') throw error; // not a unique-constraint clash
+      // Lost a race on `name` → reuse whatever the winner created.
+      const raced = await prisma.category.findUnique({ where: { name } });
+      if (raced) return raced;
+      // Otherwise the clash was on `slug`; try the next suffix.
+    }
+  }
+  throw new Error(`Could not allocate a unique slug for category "${name}"`);
+}
 
 /**
  * Fetch all approved listings for the public Marketplace Feed
@@ -212,13 +242,21 @@ export async function approvePostAction(id: string, data: {
   specs: any;
 }) {
   try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in to moderate posts.' };
+    }
+
     const importedPost = await prisma.importedPost.findUnique({
       where: { id },
       include: { group: true }
     });
 
-    if (!importedPost) {
-      throw new Error(`Imported post ${id} not found`);
+    // Ownership is checked here, not in the page or the middleware: a server
+    // action can be invoked by POSTing its action id to ANY route, including
+    // routes the middleware matcher doesn't cover.
+    if (!importedPost || importedPost.userId !== userId) {
+      return { success: false, error: 'Post not found or not owned by you.' };
     }
 
     // 1. Update imported post status
@@ -228,18 +266,7 @@ export async function approvePostAction(id: string, data: {
     });
 
     // 2. Find or create the target Category
-    let category = await prisma.category.findUnique({
-      where: { name: data.category }
-    });
-
-    if (!category) {
-      category = await prisma.category.create({
-        data: {
-          name: data.category,
-          slug: data.category.toLowerCase().replace(/[^a-z0-9]/g, '-')
-        }
-      });
-    }
+    const category = await findOrCreateCategory(data.category);
 
     // 3. Create the live public listing
     const listing = await prisma.listing.create({
@@ -273,6 +300,16 @@ export async function approvePostAction(id: string, data: {
  */
 export async function rejectPostAction(id: string, reason: string) {
   try {
+    const userId = await getSession();
+    if (!userId) {
+      return { success: false, error: 'You must be logged in to moderate posts.' };
+    }
+
+    const existing = await prisma.importedPost.findUnique({ where: { id }, select: { userId: true } });
+    if (!existing || existing.userId !== userId) {
+      return { success: false, error: 'Post not found or not owned by you.' };
+    }
+
     await prisma.importedPost.update({
       where: { id },
       data: {
@@ -471,26 +508,33 @@ export async function updateProfileDetailsAction(firstName: string, lastName: st
  */
 export async function recordAnalyticsEventAction(listingId: string, eventType: 'VIEW' | 'CONTACT_CLICK' | 'FB_CLICK') {
   try {
-    // 1. Create event row
-    await prisma.analyticsEvent.create({
-      data: {
-        listingId,
-        event: eventType
-      }
+    // Deliberately unauthenticated — marketplace visitors are anonymous. Guard
+    // against bogus ids so a bad listingId is a no-op rather than an FK error,
+    // and keep the event row and the counter in one transaction so they can't
+    // drift apart. Note: this does not stop a determined client from inflating
+    // counts; that needs IP-level throttling at the edge.
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { id: true, isActive: true }
     });
-
-    // 2. Increment listing aggregators
-    if (eventType === 'VIEW') {
-      await prisma.listing.update({
-        where: { id: listingId },
-        data: { viewsCount: { increment: 1 } }
-      });
-    } else {
-      await prisma.listing.update({
-        where: { id: listingId },
-        data: { clicksCount: { increment: 1 } }
-      });
+    if (!listing || !listing.isActive) {
+      return { success: false, error: 'Listing not found.' };
     }
+
+    await prisma.$transaction([
+      prisma.analyticsEvent.create({
+        data: {
+          listingId,
+          event: eventType
+        }
+      }),
+      prisma.listing.update({
+        where: { id: listingId },
+        data: eventType === 'VIEW'
+          ? { viewsCount: { increment: 1 } }
+          : { clicksCount: { increment: 1 } }
+      })
+    ]);
 
     return { success: true };
   } catch (error: any) {
@@ -503,64 +547,87 @@ export async function recordAnalyticsEventAction(listingId: string, eventType: '
  * Fetch aggregated analytics insights for the Seller Dashboard
  */
 export async function getAnalyticsSummaryAction() {
+  // Real numbers only. This used to floor every metric at a hardcoded baseline
+  // (totalViews: max(n, 54)), synthesise the weekly series from fixed
+  // percentages, and substitute three invented listings when the table was
+  // empty — so a brand-new account was shown traffic it never had.
+  const empty = {
+    totalViews: 0,
+    totalClicks: 0,
+    contactClicks: 0,
+    fbClicks: 0,
+    ctr: 0,
+    topListings: [] as { id: string; title: string; price: number; viewsCount: number; clicksCount: number; category: string }[],
+    dailyViews: [] as { date: string; views: number }[]
+  };
+
   try {
-    const totalViews = await prisma.analyticsEvent.count({ where: { event: 'VIEW' } });
-    const contactClicks = await prisma.analyticsEvent.count({ where: { event: 'CONTACT_CLICK' } });
-    const fbClicks = await prisma.analyticsEvent.count({ where: { event: 'FB_CLICK' } });
+    const userId = await getSession();
+    if (!userId) return empty;
+
+    // Scope to the caller's own listings — this was previously a platform-wide
+    // aggregate, which leaked other tenants' traffic.
+    const owned = await prisma.listing.findMany({
+      where: { importedPost: { userId } },
+      select: { id: true }
+    });
+    const listingIds = owned.map(l => l.id);
+    if (listingIds.length === 0) return empty;
+
+    const [totalViews, contactClicks, fbClicks, topListings] = await Promise.all([
+      prisma.analyticsEvent.count({ where: { event: 'VIEW', listingId: { in: listingIds } } }),
+      prisma.analyticsEvent.count({ where: { event: 'CONTACT_CLICK', listingId: { in: listingIds } } }),
+      prisma.analyticsEvent.count({ where: { event: 'FB_CLICK', listingId: { in: listingIds } } }),
+      prisma.listing.findMany({
+        take: 5,
+        where: { id: { in: listingIds } },
+        orderBy: { viewsCount: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          viewsCount: true,
+          clicksCount: true,
+          category: true
+        }
+      })
+    ]);
+
     const totalClicks = contactClicks + fbClicks;
-    
-    // CTR Calculation
     const ctr = totalViews > 0 ? (totalClicks / totalViews) * 100 : 0;
 
-    // Fetch popular items based on views
-    const topListings = await prisma.listing.findMany({
-      take: 5,
-      orderBy: { viewsCount: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        price: true,
-        viewsCount: true,
-        clicksCount: true,
-        category: true
-      }
+    // Real last-7-days view series, bucketed by calendar day (oldest first).
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - 6);
+
+    const recentViews = await prisma.analyticsEvent.findMany({
+      where: { event: 'VIEW', listingId: { in: listingIds }, createdAt: { gte: since } },
+      select: { createdAt: true }
     });
 
-    // Generate simulated daily time series data for charts
-    const dailyViews = [
-      { date: 'Mon', views: Math.floor(totalViews * 0.12) || 4 },
-      { date: 'Tue', views: Math.floor(totalViews * 0.15) || 8 },
-      { date: 'Wed', views: Math.floor(totalViews * 0.18) || 12 },
-      { date: 'Thu', views: Math.floor(totalViews * 0.14) || 7 },
-      { date: 'Fri', views: Math.floor(totalViews * 0.22) || 15 },
-      { date: 'Sat', views: Math.floor(totalViews * 0.11) || 5 },
-      { date: 'Sun', views: Math.floor(totalViews * 0.08) || 3 }
-    ];
+    const buckets = new Map<string, number>();
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(since);
+      day.setDate(since.getDate() + i);
+      buckets.set(day.toDateString(), 0);
+    }
+    for (const event of recentViews) {
+      const day = new Date(event.createdAt);
+      day.setHours(0, 0, 0, 0);
+      const key = day.toDateString();
+      if (buckets.has(key)) buckets.set(key, buckets.get(key)! + 1);
+    }
 
-    return {
-      totalViews: Math.max(totalViews, 54), // Elegant fallback baseline
-      totalClicks: Math.max(totalClicks, 16),
-      contactClicks: Math.max(contactClicks, 10),
-      fbClicks: Math.max(fbClicks, 6),
-      ctr: Math.max(ctr, 29.6),
-      topListings: topListings.length > 0 ? topListings : [
-        { id: '1', title: 'Porsche 911 GT3 (992)', price: 189900, viewsCount: 42, clicksCount: 14, category: 'Vehicles' },
-        { id: '2', title: 'Tesla Model S Plaid', price: 82500, viewsCount: 29, clicksCount: 8, category: 'Vehicles' },
-        { id: '3', title: 'MacBook Pro 16" M3 Max', price: 3499, viewsCount: 18, clicksCount: 4, category: 'Electronics' }
-      ],
-      dailyViews
-    };
+    const dailyViews = Array.from(buckets.entries()).map(([key, views]) => ({
+      date: new Date(key).toLocaleDateString('en-US', { weekday: 'short' }),
+      views
+    }));
+
+    return { totalViews, totalClicks, contactClicks, fbClicks, ctr, topListings, dailyViews };
   } catch (error) {
     console.error('Failed to get analytics summary:', error);
-    return {
-      totalViews: 54,
-      totalClicks: 16,
-      contactClicks: 10,
-      fbClicks: 6,
-      ctr: 29.6,
-      topListings: [],
-      dailyViews: []
-    };
+    return empty;
   }
 }
 
@@ -578,7 +645,8 @@ export async function ingestRawTextAction(groupId: string, rawText: string) {
       where: { id: groupId }
     });
 
-    if (!group) {
+    // Only the owner may ingest into their own group.
+    if (!group || group.userId !== userId) {
       return { success: false, error: 'Target Facebook Group not found.' };
     }
 

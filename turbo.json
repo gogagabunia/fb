@@ -1,0 +1,23 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": []
+    }
+  },
+  "globalEnv": [
+    "NODE_ENV",
+    "JWT_SECRET",
+    "ENCRYPTION_KEY",
+    "POSTGRES_PRISMA_URL",
+    "POSTGRES_URL_NON_POOLING"
+  ]
+}

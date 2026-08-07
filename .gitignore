@@ -43,3 +43,7 @@ web-build/
 
 # TS build cache
 *.tsbuildinfo
+
+# Turborepo daemon logs & task cache
+.turbo/
+**/.turbo/
