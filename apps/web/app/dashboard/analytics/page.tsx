@@ -88,9 +88,8 @@ export default function AnalyticsPage() {
                   <div className="space-y-xs">
                     <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">Total Page Views</span>
                     <span className="text-display-md font-bold text-primary block">{summary.totalViews.toLocaleString()}</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold block flex items-center gap-xs">
-                      <span className="material-symbols-outlined text-[12px] font-bold">trending_up</span>
-                      +18.4% since last week
+                    <span className="text-[10px] text-slate-400 block">
+                      Across all of your listings
                     </span>
                   </div>
                   <div className="w-12 h-12 bg-primary/5 text-primary rounded-xl flex items-center justify-center">
@@ -103,9 +102,8 @@ export default function AnalyticsPage() {
                   <div className="space-y-xs">
                     <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">Action Clicks</span>
                     <span className="text-display-md font-bold text-primary block">{summary.totalClicks.toLocaleString()}</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold block flex items-center gap-xs">
-                      <span className="material-symbols-outlined text-[12px] font-bold">trending_up</span>
-                      +24.1% since last week
+                    <span className="text-[10px] text-slate-400 block">
+                      {summary.contactClicks.toLocaleString()} contact · {summary.fbClicks.toLocaleString()} Facebook
                     </span>
                   </div>
                   <div className="w-12 h-12 bg-secondary/5 text-secondary rounded-xl flex items-center justify-center">
@@ -118,9 +116,8 @@ export default function AnalyticsPage() {
                   <div className="space-y-xs">
                     <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">Click-Through-Rate</span>
                     <span className="text-display-md font-bold text-secondary block">{summary.ctr.toFixed(1)}%</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold block flex items-center gap-xs">
-                      <span className="material-symbols-outlined text-[12px] font-bold">insights</span>
-                      Outstanding conversion ratio
+                    <span className="text-[10px] text-slate-400 block">
+                      Clicks as a share of page views
                     </span>
                   </div>
                   <div className="w-12 h-12 bg-secondary-container/20 text-on-secondary-container rounded-xl flex items-center justify-center">
@@ -160,6 +157,12 @@ export default function AnalyticsPage() {
                     <div className="absolute inset-x-0 top-2/4 border-t border-slate-100 border-dashed"></div>
                     <div className="absolute inset-x-0 top-3/4 border-t border-slate-100 border-dashed"></div>
 
+                    {summary.dailyViews.length === 0 && (
+                      <div className="w-full text-center text-body-sm text-on-surface-variant self-center relative z-10">
+                        No page views recorded yet.
+                      </div>
+                    )}
+
                     {summary.dailyViews.map((day) => {
                       const maxViews = Math.max(...summary.dailyViews.map(d => d.views), 1);
                       const heightPct = (day.views / maxViews) * 100;
@@ -191,6 +194,11 @@ export default function AnalyticsPage() {
                     <p className="text-body-sm text-on-surface-variant mt-xs">Ranked by overall page views.</p>
                   </div>
                   <div className="flex-grow space-y-md">
+                    {summary.topListings.length === 0 && (
+                      <p className="text-body-sm text-on-surface-variant py-lg text-center">
+                        Approve a post to publish your first listing.
+                      </p>
+                    )}
                     {summary.topListings.map((item, idx) => (
                       <div key={item.id} className="flex justify-between items-center p-sm hover:bg-surface-container-low rounded-lg transition-colors border border-outline-variant/10">
                         <div className="flex items-center gap-md truncate">

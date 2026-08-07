@@ -1,5 +1,14 @@
 import { chromium, BrowserContext, Page } from 'playwright';
 import { PrismaClient } from 'database';
+import { createHash } from 'crypto';
+
+// Reuse one PrismaClient across invocations — a per-instance client exhausts the
+// connection pool when several syncs run in the same process.
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const prismaClient = globalForPrisma.prisma ?? new PrismaClient();
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prismaClient;
+}
 
 // Custom lightweight NestJS mock decorators & Logger to prevent Next.js bundle tracing from importing @nestjs/common
 const Injectable = () => (target: any) => {};
@@ -13,7 +22,13 @@ class Logger {
 @Injectable()
 export class PlaywrightScraperService {
   private readonly logger = new Logger(PlaywrightScraperService.name);
-  private readonly prisma = new PrismaClient();
+  private readonly prisma = prismaClient;
+
+  /**
+   * Id of the ScrapingLog row this scrape created, so the caller can write the
+   * true import count back once parsing is done. Null until a scrape runs.
+   */
+  public lastScrapingLogId: string | null = null;
 
   /**
    * When true, scrape failures return canned mock posts instead of throwing.
@@ -85,15 +100,19 @@ export class PlaywrightScraperService {
           }
         });
 
-        await this.prisma.scrapingLog.create({
+        // postsImported starts at 0 — only the caller knows how many posts
+        // survive AI parsing. It used to be set to posts.length, which made
+        // every log claim a 100% import rate.
+        const log = await this.prisma.scrapingLog.create({
           data: {
             status: 'SUCCESS',
             postsScraped: posts.length,
-            postsImported: posts.length,
+            postsImported: 0,
             groupId: group.id,
             completedAt: new Date()
           }
         });
+        this.lastScrapingLogId = log.id;
 
         return posts;
       } catch (error: any) {
@@ -352,8 +371,27 @@ export class PlaywrightScraperService {
             }
           }
 
-          // Mock Post ID generation or parse actual FB Link
-          const postUrlId = `fb-${Math.random().toString(36).substring(7)}`;
+          // Identity must be stable across syncs — `fbPostId` is the upsert key.
+          // This used to be Math.random(), so every sync re-imported every post
+          // as a brand-new PENDING item. Prefer the real permalink; fall back to
+          // a hash of the post text scoped to the group.
+          const permalink = await element.evaluate((el: any) => {
+            const anchor = el.querySelector(
+              'a[href*="/posts/"], a[href*="permalink"], a[href*="story_fbid"], a[href*="multi_permalinks"]'
+            );
+            const href = anchor?.getAttribute('href');
+            if (!href) return '';
+            try {
+              const url = new URL(href, 'https://www.facebook.com');
+              return `${url.origin}${url.pathname}`;
+            } catch {
+              return '';
+            }
+          });
+
+          const postUrlId =
+            permalink ||
+            `fb-${group.id}-${createHash('sha1').update(rawText.trim()).digest('hex').substring(0, 16)}`;
 
           scrapedItems.push({
             id: postUrlId,
@@ -367,14 +405,16 @@ export class PlaywrightScraperService {
         }
       }
 
-      await this.prisma.scrapingLog.create({
+      const log = await this.prisma.scrapingLog.create({
         data: {
           status: 'SUCCESS',
           postsScraped: postElements.length,
-          postsImported: scrapedItems.length,
-          groupId: group.id
+          postsImported: 0, // filled in by the caller after AI parsing
+          groupId: group.id,
+          completedAt: new Date()
         }
       });
+      this.lastScrapingLogId = log.id;
 
     } catch (error: any) {
       this.logger.warn(`Scraping task encountered a rate limit or login wall: ${error?.message || error}`);

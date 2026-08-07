@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from 'database';
+import { prisma } from '../../lib/prisma';
 
-const prisma = new PrismaClient();
+// Public read-only feed. Capped so a single request can't pull the whole table.
+const MAX_LISTINGS = 100;
 
 export async function GET() {
   try {
     const listings = await prisma.listing.findMany({
+      take: MAX_LISTINGS,
       where: { isActive: true },
       include: {
         categoryRel: true,

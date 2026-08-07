@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getMarketplaceListings, getFavoritedIdsAction, toggleFavoriteAction } from '../actions';
 import SearchBar from './components/search-bar';
 import { MarketplaceSkeleton } from '../components/skeleton';
+import { isFeaturedNow } from '../lib/featured';
 
 interface Listing {
   id: string;
@@ -18,6 +19,8 @@ interface Listing {
   contactUrl: string;
   originalPostUrl: string;
   createdAt: any;
+  isFeatured?: boolean;
+  featuredUntil?: string | Date | null;
   categoryRel?: {
     name: string;
     slug: string;
@@ -104,11 +107,12 @@ export default function MarketplacePage() {
       }
     });
 
-  // Bento featured items: select database-marked featured listings, falling back to highest-price listings
-  const dbFeatured = listings.filter((l) => l.isFeatured);
-  const featuredItems = dbFeatured.length >= 2 
-    ? dbFeatured.slice(0, 2) 
-    : [...dbFeatured, ...listings.filter((l) => !l.isFeatured && l.price > 10000)].slice(0, 2);
+  // Bento featured items: promoted listings whose paid window is still open,
+  // falling back to highest-price listings to fill the two slots.
+  const dbFeatured = listings.filter((l) => isFeaturedNow(l));
+  const featuredItems = dbFeatured.length >= 2
+    ? dbFeatured.slice(0, 2)
+    : [...dbFeatured, ...listings.filter((l) => !isFeaturedNow(l) && l.price > 10000)].slice(0, 2);
   const mainFeatured = featuredItems[0];
   const sideFeatured = featuredItems[1];
 

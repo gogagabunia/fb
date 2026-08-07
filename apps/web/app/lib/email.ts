@@ -7,6 +7,20 @@ interface ModerationDetails {
   groupName: string;
 }
 
+/**
+ * Escape untrusted text before interpolating it into the HTML email body.
+ * Everything here originates from a scraped Facebook post, i.e. from whoever
+ * wrote that post — it must never be treated as markup.
+ */
+function escapeHtml(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export async function sendAdminModerationAlert(details: ModerationDetails) {
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
@@ -52,13 +66,13 @@ export async function sendAdminModerationAlert(details: ModerationDetails) {
           
           <div class="detail-box">
             <span class="label">Source Facebook Group</span>
-            <p class="value">${details.groupName}</p>
-            
+            <p class="value">${escapeHtml(details.groupName)}</p>
+
             <span class="label">Author</span>
-            <p class="value">${details.authorName}</p>
-            
+            <p class="value">${escapeHtml(details.authorName)}</p>
+
             <span class="label">Raw Post Content</span>
-            <div class="text-snippet">${details.rawText}</div>
+            <div class="text-snippet">${escapeHtml(details.rawText)}</div>
           </div>
           
           <center>
@@ -88,7 +102,9 @@ export async function sendAdminModerationAlert(details: ModerationDetails) {
       const info = await transporter.sendMail({
         from: smtpFrom,
         to: adminEmail,
-        subject: `[Moderation Pending] New listing found in "${details.groupName}"`,
+        // Subject is plain text, so it takes the raw value; strip newlines to
+        // prevent header injection.
+        subject: `[Moderation Pending] New listing found in "${details.groupName.replace(/[\r\n]+/g, ' ')}"`,
         html: htmlContent,
       });
 
