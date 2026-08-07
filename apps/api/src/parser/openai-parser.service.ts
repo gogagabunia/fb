@@ -149,11 +149,16 @@ Otherwise, return a structured listing with the schema:
   async parseRawPostWithGemini(rawText: string, geminiKey: string): Promise<ExtractedListing> {
     this.logger.log('Sending post text to Google Gemini (AI Studio) for structured extraction...');
     
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-    
+    // The key goes in a header, not the query string — URLs end up in proxy and
+    // server logs, and this one is a credential.
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': geminiKey
+      },
       body: JSON.stringify({
         contents: [
           {
@@ -187,13 +192,19 @@ ${rawText}`
           }
         ],
         generationConfig: {
-          responseMimeType: 'application/json'
+          responseMimeType: 'application/json',
+          // Structured extraction should be near-deterministic. Without this
+          // Gemini defaults to ~1.0 and returns different fields for the same
+          // post on repeat runs. Groq and OpenAI already use 0.1.
+          temperature: 0.1
         }
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API returned status ${response.status}`);
+      // Include the body — a bare status code makes a 400 impossible to debug.
+      const errText = await response.text().catch(() => '');
+      throw new Error(`Gemini API returned status ${response.status}: ${errText}`);
     }
 
     const data = await response.json();
