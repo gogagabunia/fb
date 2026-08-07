@@ -47,6 +47,7 @@ Generate the secrets with `openssl rand -base64 48`.
 | `GEMINI_API_KEY` / `GROQ_API_KEY` / `OPENAI_API_KEY` | Parser falls through Gemini → Groq → OpenAI → local regex heuristics. |
 | `STRIPE_SECRET_KEY` | Listing promotion returns 503 (`Payments are not configured`). |
 | `STRIPE_WEBHOOK_SECRET` | Required alongside the Stripe key — promotions are applied by the webhook, not at checkout. |
+| `BLOB_READ_WRITE_TOKEN` | Listing images keep pointing at Facebook CDN URLs, which expire — published listings lose their photos after a few days. Set it (Vercel → Storage → Blob) to copy images into permanent storage at import. |
 | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Moderation alerts log to stdout instead of sending. |
 | `CRON_SECRET` | Checked as `Authorization: Bearer …` on `/api/cron/scrape` in production. |
 | `NEXT_PUBLIC_APP_URL` | Defaults to `http://localhost:3000` in links and redirects. |
@@ -65,9 +66,27 @@ read via `featuredUntil`.
 ## Deployment
 
 Deployed on Vercel. Both `vercel.json` (repo root) and `apps/web/vercel.json`
-carry the same build command and the daily `/api/cron/scrape` schedule, so the
-cron registers whichever directory the Vercel project is rooted at. Keep them in
-sync when changing either.
+carry the same build command and the `/api/cron/scrape` schedule, so the cron
+registers whichever directory the Vercel project is rooted at. Keep them in sync
+when changing either.
+
+### Scrape frequency
+
+The schedule is `0 */6 * * *` — every six hours.
+
+**On the Hobby plan Vercel runs cron jobs once per day regardless of the
+expression**, so this only takes effect on Pro. The route also sets
+`maxDuration = 60`, the Hobby ceiling; on Pro it can be raised, which matters
+because each run parses posts through an LLM (see `PARSE_BUDGET_MS` in
+`app/lib/sync.ts`, currently 35s per group).
+
+Raising frequency costs real money: every run triggers an Apify actor run per
+active group and one LLM call per candidate post. Weigh that before going below
+six hours.
+
+Images are copied into blob storage at import time, so listings keep their
+photos after Facebook's CDN URLs expire — set `BLOB_READ_WRITE_TOKEN` to enable
+it (see the environment table above).
 
 ## Known gaps
 

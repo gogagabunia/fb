@@ -8,8 +8,7 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prismaClient;
 }
 
-// Custom lightweight NestJS mock decorators & Logger to prevent Next.js bundle tracing from importing @nestjs/common
-const Injectable = () => (target: any) => {};
+// Lightweight local Logger, so this module never pulls in @nestjs/common.
 class Logger {
   constructor(private name: string) {}
   log(msg: string) { console.log(`[${this.name}] ${msg}`); }
@@ -17,7 +16,6 @@ class Logger {
   error(msg: string) { console.error(`[${this.name}] ${msg}`); }
 }
 
-@Injectable()
 export class PlaywrightScraperService {
   private readonly logger = new Logger(PlaywrightScraperService.name);
   private readonly prisma = prismaClient;

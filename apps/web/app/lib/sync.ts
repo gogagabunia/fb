@@ -1,5 +1,7 @@
 import { prisma } from './prisma';
 import { decrypt } from './crypto';
+import { persistImages } from './image-store';
+import { mapWithConcurrency } from './concurrency';
 import { PlaywrightScraperService } from '../../../api/src/scrapers/playwright-scraper.service';
 import { OpenAIParserService } from '../../../api/src/parser/openai-parser.service';
 
@@ -22,25 +24,6 @@ const PARSE_CONCURRENCY = 5;
  */
 const PARSE_BUDGET_MS = 35_000;
 
-/** Run `worker` over `items` with a bounded number of concurrent calls. */
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  worker: (item: T) => Promise<R>
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let cursor = 0;
-
-  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (cursor < items.length) {
-      const index = cursor++;
-      results[index] = await worker(items[index]);
-    }
-  });
-
-  await Promise.all(runners);
-  return results;
-}
 
 /**
  * Core "sync last 30 days of a group into PENDING imported posts" routine.
@@ -145,10 +128,19 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
   for (const { post, parsed } of listings) {
     const existing = await prisma.importedPost.findUnique({
       where: { fbPostId: post.id },
-      select: { id: true }
+      select: { id: true, images: true }
     });
 
+    // Storage key derived from the post identity so a re-sync lands in the same
+    // place. The id can be a full permalink, so strip it to path-safe chars.
+    const imageKey = `posts/${group.id}/${post.id.replace(/[^a-zA-Z0-9]+/g, '-').slice(-64)}`;
+
     if (existing) {
+      // Once images are stored, keep them: `post.images` on a re-scrape is a
+      // fresh set of expiring Facebook CDN URLs, and writing those back would
+      // undo the copy we already made.
+      const alreadyStored = existing.images.some(url => url.includes('.blob.vercel-storage.com'));
+
       // Refresh the scraped content, but never touch `status`. This was an
       // upsert that always wrote status: 'PENDING', so every re-sync dragged
       // already-approved and already-rejected posts back into the moderation
@@ -157,7 +149,7 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
         where: { id: existing.id },
         data: {
           rawText: post.text,
-          images: post.images,
+          images: alreadyStored ? existing.images : await persistImages(post.images, imageKey),
           authorName: post.author,
           priceScraped: parsed.price || null
         }
@@ -169,7 +161,7 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
       data: {
         fbPostId: post.id,
         rawText: post.text,
-        images: post.images,
+        images: await persistImages(post.images, imageKey),
         authorName: post.author,
         priceScraped: parsed.price || null,
         status: 'PENDING',
