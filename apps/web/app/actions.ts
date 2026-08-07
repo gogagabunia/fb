@@ -39,25 +39,135 @@ async function findOrCreateCategory(name: string) {
   throw new Error(`Could not allocate a unique slug for category "${name}"`);
 }
 
+// Not exported: a 'use server' module may only export async functions. The
+// client doesn't need the page size anyway — it pages off `hasMore`.
+const MARKETPLACE_PAGE_SIZE = 24;
+
+export interface MarketplaceQuery {
+  search?: string;
+  category?: string;      // 'All' or a category name
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  sortBy?: 'newest' | 'price-asc' | 'price-desc';
+  page?: number;          // 0-based
+}
+
+const LISTING_INCLUDE = {
+  categoryRel: true,
+  importedPost: {
+    include: {
+      group: true
+    }
+  }
+} as const;
+
 /**
- * Fetch all approved listings for the public Marketplace Feed
+ * Fetch one page of the public Marketplace Feed.
+ *
+ * Search, category, price range and sort all run in the database. They used to
+ * run in the browser over the full table, which meant this action had to return
+ * every active listing — unbounded, and two joins per row. Paginating without
+ * moving the filters server-side would have been worse than not paginating at
+ * all: search would silently only cover the loaded page.
  */
-export async function getMarketplaceListings() {
+export async function getMarketplaceListings(query: MarketplaceQuery = {}) {
+  const {
+    search = '',
+    category = 'All',
+    minPrice = null,
+    maxPrice = null,
+    sortBy = 'newest',
+    page = 0
+  } = query;
+
   try {
-    return await prisma.listing.findMany({
-      where: { isActive: true },
-      include: {
-        categoryRel: true,
-        importedPost: {
-          include: {
-            group: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    const term = search.trim();
+
+    const where: any = { isActive: true };
+
+    if (category && category !== 'All') {
+      where.category = category;
+    }
+
+    if (minPrice != null || maxPrice != null) {
+      where.price = {};
+      if (minPrice != null) where.price.gte = minPrice;
+      if (maxPrice != null) where.price.lte = maxPrice;
+    }
+
+    if (term) {
+      // Same fields the client used to match on, including the source group.
+      where.OR = [
+        { title: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: 'insensitive' } },
+        { category: { contains: term, mode: 'insensitive' } },
+        { importedPost: { group: { name: { contains: term, mode: 'insensitive' } } } }
+      ];
+    }
+
+    const orderBy =
+      sortBy === 'price-asc' ? { price: 'asc' as const }
+      : sortBy === 'price-desc' ? { price: 'desc' as const }
+      : { createdAt: 'desc' as const };
+
+    const take = MARKETPLACE_PAGE_SIZE;
+    const skip = Math.max(0, page) * take;
+
+    const [items, total] = await Promise.all([
+      prisma.listing.findMany({ where, include: LISTING_INCLUDE, orderBy, skip, take }),
+      prisma.listing.count({ where })
+    ]);
+
+    return { items, total, hasMore: skip + items.length < total };
   } catch (error) {
     console.error('Failed to get marketplace listings:', error);
+    return { items: [], total: 0, hasMore: false };
+  }
+}
+
+/**
+ * Related listings for the "similar items" carousel on a listing page.
+ *
+ * This used to pull every active listing and filter four out of it in memory.
+ */
+export async function getSimilarListings(listingId: string, category: string, take = 4) {
+  try {
+    return await prisma.listing.findMany({
+      where: {
+        isActive: true,
+        id: { not: listingId },
+        category
+      },
+      include: LISTING_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      take
+    });
+  } catch (error) {
+    console.error('Failed to get similar listings:', error);
+    return [];
+  }
+}
+
+/**
+ * Currently-promoted listings for the marketplace's featured grid.
+ *
+ * Deliberately its own query rather than a filter over the current page —
+ * otherwise which listings appear featured would change as the user paginates.
+ */
+export async function getFeaturedListings() {
+  try {
+    return await prisma.listing.findMany({
+      where: {
+        isActive: true,
+        isFeatured: true,
+        OR: [{ featuredUntil: null }, { featuredUntil: { gt: new Date() } }]
+      },
+      include: LISTING_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      take: 2
+    });
+  } catch (error) {
+    console.error('Failed to get featured listings:', error);
     return [];
   }
 }
