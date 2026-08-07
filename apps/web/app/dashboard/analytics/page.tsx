@@ -1,11 +1,11 @@
-'use client';
-
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getAnalyticsSummaryAction } from '../../actions';
 import { getCurrentUser } from '../../auth-actions';
 import Sidebar from '../../components/sidebar';
-import { DashboardSkeleton } from '../../components/skeleton';
+
+// Reads the session cookie, so it can never be prerendered. Declaring it
+// here stops Next attempting a static render and logging the failure at build.
+export const dynamic = 'force-dynamic';
 
 interface TopListing {
   id: string;
@@ -31,26 +31,16 @@ interface AnalyticsSummary {
   dailyViews: DailyView[];
 }
 
-export default function AnalyticsPage() {
-  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const stats = await getAnalyticsSummaryAction();
-        setSummary(stats);
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-      } catch (err) {
-        console.error('Failed to load analytics summaries:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
+/**
+ * Server component: the data is fetched here and arrives with the HTML.
+ *
+ * This used to be a client component that rendered a skeleton, then fetched in
+ * useEffect — page load, then JS load, then two sequential server actions,
+ * before anything real appeared. Nothing on this page is interactive, so none
+ * of that indirection bought anything.
+ */
+export default async function AnalyticsPage() {
+  const [summary, user] = await Promise.all([getAnalyticsSummaryAction(), getCurrentUser()]);
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-sans selection:bg-secondary-container">
@@ -77,10 +67,7 @@ export default function AnalyticsPage() {
             </Link>
           </header>
 
-          {loading || !summary ? (
-            <DashboardSkeleton />
-          ) : (
-            <div className="space-y-xl">
+          <div className="space-y-xl">
               {/* Stat Metric Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md md:gap-lg">
                 {/* Views Card */}
@@ -222,7 +209,6 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             </div>
-          )}
         </main>
       </div>
     </div>

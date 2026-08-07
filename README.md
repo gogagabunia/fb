@@ -86,10 +86,28 @@ Images are copied into blob storage at import time, so listings keep their
 photos after Facebook's CDN URLs expire — set `BLOB_READ_WRITE_TOKEN` to enable
 it (see the environment table above).
 
+## Tests
+
+```bash
+npm test          # vitest, once
+npm run test:watch
+```
+
+Covers the pure logic: model-output validation, promotion expiry, the bounded
+parser concurrency, HTML escaping, and image storage fallbacks. CI
+(`.github/workflows/ci.yml`) runs install → prisma generate → schema validate →
+test → typecheck → build on every push to `main` and every PR.
+
+Database-backed flows are not covered by automated tests. To exercise them, use
+`.claude/skills/run-groupmarket` — it runs a real Postgres locally, seeds data,
+and drives the app with Playwright.
+
 ## Known gaps
 
-- `apps/web/next.config.mjs` sets `ignoreBuildErrors` and `ignoreDuringBuilds`,
-  so TypeScript and ESLint failures do not block a deploy.
+- No automated coverage of the database-backed paths (moderation, sync,
+  checkout) — only the pure logic above.
+- ESLint is not configured, so `ignoreDuringBuilds` stays on in
+  `next.config.mjs`. TypeScript errors *do* block the build.
 - The login rate limiter (`app/lib/rate-limiter.ts`) is in-process, so on
   serverless it limits per instance rather than per account.
 - Analytics event recording is unauthenticated by design (visitors are
