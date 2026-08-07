@@ -1,6 +1,4 @@
-import { chromium, BrowserContext, Page } from 'playwright';
 import { PrismaClient } from 'database';
-import { createHash } from 'crypto';
 
 // Reuse one PrismaClient across invocations — a per-instance client exhausts the
 // connection pool when several syncs run in the same process.
@@ -38,26 +36,6 @@ export class PlaywrightScraperService {
     return process.env.USE_MOCK_SCRAPER === 'true';
   }
 
-  /**
-   * Detect whether a group is publicly readable (no login) or private.
-   * Runs a tiny cookie-less Apify probe: posts returned → PUBLIC, login-wall /
-   * error / empty → PRIVATE. Defaults to PRIVATE when it can't tell (safe: the
-   * UI then prompts a Facebook login rather than silently failing).
-   */
-  async detectGroupVisibility(url: string): Promise<'PUBLIC' | 'PRIVATE'> {
-    const apifyToken = process.env.APIFY_API_TOKEN;
-    if (!apifyToken) {
-      this.logger.warn('No APIFY_API_TOKEN — cannot probe visibility, defaulting to PRIVATE.');
-      return 'PRIVATE';
-    }
-    try {
-      const posts = await this.scrapeGroupWithApify(url, { maxPosts: 3, token: apifyToken, noCookies: true });
-      return posts.length > 0 ? 'PUBLIC' : 'PRIVATE';
-    } catch (error: any) {
-      this.logger.log(`Visibility probe treated as PRIVATE: ${error?.message || error}`);
-      return 'PRIVATE';
-    }
-  }
 
   /**
    * Scrapes recent posts from a Facebook Group.
@@ -138,277 +116,32 @@ export class PlaywrightScraperService {
       }
     }
 
-    this.logger.log(`Starting scrape task for group: ${group.name} (${group.url})`);
-    
-    let browser: any = null;
-    const scrapedItems: any[] = [];
+    // ── Browser fallback ────────────────────────────────────────────
+    // Loaded on demand so `playwright` stays out of the web app's server
+    // bundle; it cannot run on Vercel and is only reachable with no Apify token.
+    const { scrapeGroupWithBrowser } = await import('./browser-scraper');
 
     try {
-      const browserlessUrl = process.env.BROWSERLESS_URL;
-      const chromeCdpUrl = process.env.CHROME_CDP_URL;
-      
-      let context: BrowserContext;
-      
-      if (chromeCdpUrl) {
-        this.logger.log(`Connecting to local running Chrome CDP: ${chromeCdpUrl}`);
-        browser = await chromium.connectOverCDP(chromeCdpUrl);
-        const contexts = browser.contexts();
-        if (contexts.length > 0) {
-          context = contexts[0];
-          this.logger.log('Reusing existing Chrome context.');
-        } else {
-          throw new Error('No active browser context found on local Chrome instance.');
+      const result = await scrapeGroupWithBrowser(
+        { id: group.id, name: group.name, url: group.url, keywords: group.keywords },
+        {
+          maxPosts,
+          cookiesJson,
+          log: (m: string) => this.logger.log(m),
+          warn: (m: string) => this.logger.warn(m),
+          error: (m: string) => this.logger.error(m)
         }
-      } else if (browserlessUrl) {
-        this.logger.log(`Connecting to remote Browserless CDP WebSocket: ${browserlessUrl.split('?')[0]}`);
-        browser = await chromium.connectOverCDP(browserlessUrl);
-        context = await browser.newContext({
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          viewport: { width: 1280, height: 800 }
-        });
-      } else {
-        // Launch headless chromium locally
-        this.logger.log('Launching local Chromium engine...');
-        browser = await chromium.launch({
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-blink-features=AutomationControlled'
-          ]
-        });
-        context = await browser.newContext({
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          viewport: { width: 1280, height: 800 }
-        });
-      }
-
-      // Inject Facebook Session Cookies to authenticate automated scrapers (only if not reusing existing Chrome context)
-      if (!chromeCdpUrl) {
-        // Prefer the per-owner cookies passed in for this sync; fall back to a
-        // global FB_COOKIES env var for local/dev use.
-        const fbCookiesRaw = cookiesJson || process.env.FB_COOKIES;
-        if (fbCookiesRaw) {
-          try {
-            const rawCookies = JSON.parse(fbCookiesRaw);
-            // Transform Cookie-Editor export format → Playwright format
-            const cookies = rawCookies.map((c: any) => {
-              const sameSiteMap: Record<string, string> = {
-                'no_restriction': 'None',
-                'lax': 'Lax',
-                'strict': 'Strict'
-              };
-              const cookie: any = {
-                name: c.name,
-                value: c.value,
-                domain: c.domain,
-                path: c.path || '/',
-                httpOnly: !!c.httpOnly,
-                secure: !!c.secure,
-                sameSite: sameSiteMap[c.sameSite] || 'None'
-              };
-              // Cookie-Editor uses 'expirationDate', Playwright uses 'expires'
-              if (c.expirationDate) {
-                cookie.expires = c.expirationDate;
-              }
-              return cookie;
-            });
-            await context.addCookies(cookies);
-            this.logger.log(`Successfully injected ${cookies.length} Facebook session cookies.`);
-          } catch (e: any) {
-            this.logger.error('Failed to parse or inject Facebook cookies: ' + e.message);
-          }
-        }
-      }
-
-      const page = await context.newPage();
-
-      // Go to group discussion page
-      this.logger.log(`Navigating to group URL: ${group.url}`);
-      // Use 'domcontentloaded' instead of 'networkidle' — Facebook streams
-      // background requests indefinitely, so networkidle never resolves
-      await page.goto(group.url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      // Give Facebook's JS a moment to render the feed
-      await page.waitForTimeout(3000);
-
-      // Handle login/profile chooser redirection if detected
-      if (page.url().includes('/login') || page.url().includes('login.php') || await page.$('input[name="email"]')) {
-        this.logger.log(`Detected login/auth wall redirect at URL: ${page.url()}`);
-        
-        // Try to click "Continue" (or translation) if it's the profile chooser screen
-        const clicked = await page.evaluate(() => {
-          const words = ['continue', 'გაგრძელება', 'continuar', 'continuer', 'продолжить'];
-          // 1. Search in buttons, links, and role="button" elements
-          const elements = Array.from(document.querySelectorAll('button, [role="button"], a, div'));
-          for (const el of elements) {
-            const txt = (el.textContent || '').trim().toLowerCase();
-            if (words.includes(txt)) {
-              const clickable = el.closest('button, [role="button"], a') || el;
-              (clickable as HTMLElement).click();
-              return true;
-            }
-          }
-          return false;
-        });
-
-        if (clicked) {
-          this.logger.log('Profile chooser Continue/გაგრძელება button clicked via page evaluation.');
-          // Wait for navigation
-          await page.waitForTimeout(6000);
-          this.logger.log(`URL after clicking Continue: ${page.url()}`);
-        } else {
-          this.logger.warn('No profile chooser Continue button detected.');
-        }
-        
-        // Re-check if we are still on the login page
-        if (page.url().includes('/login') || page.url().includes('login.php') || await page.$('input[name="email"]')) {
-          this.logger.warn('Facebook Login page hit. Session cookies required.');
-          throw new Error('FB_AUTH_REQUIRED: Facebook authentication session expired or cookies not provided.');
-        }
-      }
-
-      // ── Admin Verification Gate ──────────────────────────────────
-      // Check if the authenticated user is an admin/moderator of this group
-      // by scanning for Facebook's admin-only UI elements on the page
-      this.logger.log('Verifying admin/moderator status for this group...');
-      
-      const pageContent = await page.content();
-      const pageText = await page.evaluate(() => document.body?.innerText || '');
-      
-      const adminIndicators = [
-        'Admin Tools',
-        'Admin tools',
-        'admin tools',
-        'Manage group',
-        'Manage Group',
-        'manage group',
-        'Group settings',
-        'group settings',
-        'Pending posts',
-        'pending posts',
-        'Member requests',
-        'member requests',
-        'Moderation alerts',
-      ];
-
-      const isAdmin = adminIndicators.some(indicator => 
-        pageText.includes(indicator) || pageContent.includes(indicator)
       );
 
-      // Also check for admin-specific aria labels and data attributes
-      const adminElements = await page.$$([
-        '[aria-label*="Admin"]',
-        '[aria-label*="admin"]',
-        '[aria-label*="Manage"]',
-        'a[href*="/groups/"][href*="/admin"]',
-        'a[href*="admin_activities"]',
-        'a[href*="member_requests"]',
-      ].join(', '));
-
-      const hasAdminElements = adminElements.length > 0;
-      const adminVerified = isAdmin || hasAdminElements;
-
-      // Update verification status in the database
       await this.prisma.facebookGroup.update({
         where: { id: group.id },
-        data: {
-          adminVerified,
-          adminVerifiedAt: new Date()
-        }
+        data: { adminVerified: result.adminVerified, adminVerifiedAt: new Date() }
       });
-
-      if (!adminVerified) {
-        this.logger.warn('Admin status not detected on this group page (scraping will continue as member/visitor).');
-      } else {
-        this.logger.log('✅ Admin status detected on group page.');
-      }
-
-      // Scroll to trigger lazy loading of posts
-      this.logger.log('Scrolling feed for lazy loaded posts...');
-      for (let i = 0; i < 3; i++) {
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.5));
-        await page.waitForTimeout(1000 + Math.random() * 1000); // Anti-ban jitter
-      }
-
-      // Locate posts using general Facebook CSS classes and fallbacks
-      let postElements = await page.$$('div[role="feed"] div[role="article"]');
-      if (postElements.length === 0) {
-        postElements = await page.$$('div[role="article"]');
-      }
-      if (postElements.length === 0) {
-        postElements = await page.$$('div[data-ad-preview="message"]');
-      }
-      this.logger.log(`Found ${postElements.length} post containers.`);
-
-      for (const element of postElements.slice(0, maxPosts)) {
-        try {
-          const rawText = await element.evaluate((el: any) => {
-            const msgEl = el.querySelector('[data-ad-preview="message"], [data-testid="post_message"], div[dir="auto"]');
-            return msgEl ? msgEl.textContent : el.textContent || '';
-          });
-          
-          // Basic keyword filter to only pull potential selling posts
-          const watchKeywords = group.keywords.length > 0 ? group.keywords : ['sell', 'price', 'sale', 'usd', '$', 'car', 'mile', 'runs', 'clean'];
-          const matchesKeyword = watchKeywords.some(kw => rawText.toLowerCase().includes(kw.toLowerCase()));
-          
-          if (!matchesKeyword) {
-            continue; // Skip irrelevant noise post
-          }
-
-          // Scrape adjacent images
-          const parentPostContainer = await element.evaluateHandle((el: any) => el.closest('div[role="article"]') || el.parentElement);
-          const imageUrls: string[] = [];
-          if (parentPostContainer) {
-            const images = await parentPostContainer.asElement()?.$$('img');
-            if (images) {
-              for (const img of images) {
-                const src = await img.getAttribute('src');
-                if (src && !src.includes('profile') && src.startsWith('http')) {
-                  imageUrls.push(src);
-                }
-              }
-            }
-          }
-
-          // Identity must be stable across syncs — `fbPostId` is the upsert key.
-          // This used to be Math.random(), so every sync re-imported every post
-          // as a brand-new PENDING item. Prefer the real permalink; fall back to
-          // a hash of the post text scoped to the group.
-          const permalink = await element.evaluate((el: any) => {
-            const anchor = el.querySelector(
-              'a[href*="/posts/"], a[href*="permalink"], a[href*="story_fbid"], a[href*="multi_permalinks"]'
-            );
-            const href = anchor?.getAttribute('href');
-            if (!href) return '';
-            try {
-              const url = new URL(href, 'https://www.facebook.com');
-              return `${url.origin}${url.pathname}`;
-            } catch {
-              return '';
-            }
-          });
-
-          const postUrlId =
-            permalink ||
-            `fb-${group.id}-${createHash('sha1').update(rawText.trim()).digest('hex').substring(0, 16)}`;
-
-          scrapedItems.push({
-            id: postUrlId,
-            text: rawText.trim(),
-            images: [...new Set(imageUrls)],
-            author: 'Facebook User',
-            title: rawText.split('\n')[0].substring(0, 100)
-          });
-        } catch (postError: any) {
-          this.logger.error(`Error parsing individual post: ${postError?.message || postError}`);
-        }
-      }
 
       const log = await this.prisma.scrapingLog.create({
         data: {
           status: 'SUCCESS',
-          postsScraped: postElements.length,
+          postsScraped: result.containersFound,
           postsImported: 0, // filled in by the caller after AI parsing
           groupId: group.id,
           completedAt: new Date()
@@ -416,6 +149,7 @@ export class PlaywrightScraperService {
       });
       this.lastScrapingLogId = log.id;
 
+      return result.posts;
     } catch (error: any) {
       this.logger.warn(`Scraping task encountered a rate limit or login wall: ${error?.message || error}`);
 
@@ -433,18 +167,10 @@ export class PlaywrightScraperService {
 
       if (this.useMock()) {
         this.logger.log('USE_MOCK_SCRAPER set — returning mock classified fallback items.');
-        scrapedItems.push(...this.getMockPosts());
-      } else {
-        throw error; // `finally` below still closes the browser
+        return this.getMockPosts();
       }
-    } finally {
-      if (browser) {
-        this.logger.log('Closing browser session...');
-        await browser.close();
-      }
+      throw error;
     }
-
-    return scrapedItems;
   }
 
   /**

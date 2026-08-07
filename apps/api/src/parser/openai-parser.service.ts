@@ -19,6 +19,77 @@ export interface ExtractedListing {
   specs?: Record<string, any>;
 }
 
+export const LISTING_CATEGORIES = ['Vehicles', 'Electronics', 'Real Estate', 'General'] as const;
+
+/**
+ * The single extraction prompt, shared by every provider.
+ *
+ * It used to be pasted separately into the Groq, Gemini and OpenAI calls, so
+ * editing one left the other two on the old wording and the providers drifted
+ * apart in what they returned.
+ */
+export const EXTRACTION_PROMPT = `You are a highly advanced classified ads extractor that outputs structured JSON.
+Analyze the raw social media text. Identify if it is a selling post (classified ad).
+If it is NOT a selling post (e.g. general discussion, query, recommendation request), return {"isListing": false}.
+Otherwise, return a structured listing with the schema:
+{
+  "isListing": true,
+  "category": ${LISTING_CATEGORIES.map(c => `"${c}"`).join(' | ')},
+  "title": "Clean, short, catchy title summarizing the item",
+  "price": 12500, // float value or null if not specified
+  "location": "City, State or area name",
+  "description": "Clean, grammatical summary of the features and details",
+  "specs": {
+    "make": "Honda",
+    "model": "Accord",
+    "year": 2018,
+    "transmission": "Automatic",
+    "mileage": 45000
+  }
+}`;
+
+/** Coerce a model-supplied price ("$18,500", "18500", 18500) to a number. */
+function coercePrice(value: any): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : undefined;
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    if (!cleaned) return undefined;
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Validate and normalise whatever the model returned.
+ *
+ * `JSON.parse(...) as ExtractedListing` was a compile-time assertion that
+ * checked nothing at runtime, so a price of "18,500" or a category of "Cars"
+ * flowed straight into the database — priceScraped is a Float column.
+ */
+export function normalizeExtraction(raw: any): ExtractedListing {
+  if (!raw || typeof raw !== 'object' || raw.isListing !== true) {
+    return { isListing: false };
+  }
+
+  const str = (v: any) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+
+  const category = str(raw.category);
+  const known = LISTING_CATEGORIES.find(c => c.toLowerCase() === category?.toLowerCase());
+
+  return {
+    isListing: true,
+    // An unrecognised category would break the marketplace filters, so anything
+    // off-schema falls back to General rather than being stored verbatim.
+    category: known || 'General',
+    title: str(raw.title),
+    price: coercePrice(raw.price),
+    location: str(raw.location),
+    description: str(raw.description),
+    specs: raw.specs && typeof raw.specs === 'object' && !Array.isArray(raw.specs) ? raw.specs : {}
+  };
+}
+
 @Injectable()
 export class OpenAIParserService {
   private readonly logger = new Logger(OpenAIParserService.name);
@@ -100,25 +171,7 @@ export class OpenAIParserService {
         messages: [
           {
             role: 'system',
-            content: `You are a highly advanced classified ads extractor that outputs structured JSON.
-Analyze the raw social media text. Identify if it is a selling post (classified ad).
-If it is NOT a selling post (e.g. general discussion, query, recommendation request), return {"isListing": false}.
-Otherwise, return a structured listing with the schema:
-{
-  "isListing": true,
-  "category": "Vehicles" | "Electronics" | "Real Estate" | "General",
-  "title": "Clean, short, catchy title summarizing the item",
-  "price": 12500, // float value or null if not specified
-  "location": "City, State or area name",
-  "description": "Clean, grammatical summary of the features and details",
-  "specs": {
-    "make": "Honda",
-    "model": "Accord",
-    "year": 2018,
-    "transmission": "Automatic",
-    "mileage": 45000
-  }
-}`
+            content: EXTRACTION_PROMPT
           },
           {
             role: 'user',
@@ -136,10 +189,10 @@ Otherwise, return a structured listing with the schema:
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content || '{}';
-    const result = JSON.parse(text);
-    
+    const result = normalizeExtraction(JSON.parse(text));
+
     this.logger.log(`Groq Llama parsing complete. isListing: ${result.isListing}`);
-    return result as ExtractedListing;
+    return result;
   }
 
 
@@ -149,36 +202,23 @@ Otherwise, return a structured listing with the schema:
   async parseRawPostWithGemini(rawText: string, geminiKey: string): Promise<ExtractedListing> {
     this.logger.log('Sending post text to Google Gemini (AI Studio) for structured extraction...');
     
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-    
+    // The key goes in a header, not the query string — URLs end up in proxy and
+    // server logs, and this one is a credential.
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': geminiKey
+      },
       body: JSON.stringify({
         contents: [
           {
             role: 'user',
             parts: [
               {
-                text: `You are a highly advanced classified ads extractor.
-Analyze the raw social media text. Identify if it is a selling post (classified ad).
-If it is NOT a selling post (e.g. general discussion, query, recommendation request), return {"isListing": false}.
-Otherwise, return a structured listing with the schema:
-{
-  "isListing": true,
-  "category": "Vehicles" | "Electronics" | "Real Estate" | "General",
-  "title": "Clean, short, catchy title summarizing the item",
-  "price": 12500, // float value or null if not specified
-  "location": "City, State or area name",
-  "description": "Clean, grammatical summary of the features and details",
-  "specs": {
-    "make": "Honda",
-    "model": "Accord",
-    "year": 2018,
-    "transmission": "Automatic",
-    "mileage": 45000
-  }
-}
+                text: `${EXTRACTION_PROMPT}
 
 Social media text:
 ${rawText}`
@@ -187,21 +227,27 @@ ${rawText}`
           }
         ],
         generationConfig: {
-          responseMimeType: 'application/json'
+          responseMimeType: 'application/json',
+          // Structured extraction should be near-deterministic. Without this
+          // Gemini defaults to ~1.0 and returns different fields for the same
+          // post on repeat runs. Groq and OpenAI already use 0.1.
+          temperature: 0.1
         }
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API returned status ${response.status}`);
+      // Include the body — a bare status code makes a 400 impossible to debug.
+      const errText = await response.text().catch(() => '');
+      throw new Error(`Gemini API returned status ${response.status}: ${errText}`);
     }
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const result = JSON.parse(text);
-    
+    const result = normalizeExtraction(JSON.parse(text));
+
     this.logger.log(`Gemini parsing complete. isListing: ${result.isListing}`);
-    return result as ExtractedListing;
+    return result;
   }
 
   /**
@@ -216,25 +262,7 @@ ${rawText}`
       messages: [
         {
           role: 'system',
-          content: `You are a highly advanced classified ads extractor.
-Analyze the raw social media text. Identify if it is a selling post (classified ad).
-If it is NOT a selling post (e.g. general discussion, query, recommendation request), return {"isListing": false}.
-Otherwise, return a structured listing with the schema:
-{
-  "isListing": true,
-  "category": "Vehicles" | "Electronics" | "Real Estate" | "General",
-  "title": "Clean, short, catchy title summarizing the item",
-  "price": 12500, // float value or null if not specified
-  "location": "City, State or area name",
-  "description": "Clean, grammatical summary of the features and details",
-  "specs": {
-    "make": "Honda",
-    "model": "Accord",
-    "year": 2018,
-    "transmission": "Automatic",
-    "mileage": 45000
-  }
-}`
+          content: EXTRACTION_PROMPT
         },
         {
           role: 'user',
@@ -244,9 +272,9 @@ Otherwise, return a structured listing with the schema:
       temperature: 0.1
     });
 
-    const result = JSON.parse(response.choices[0].message.content || '{}');
+    const result = normalizeExtraction(JSON.parse(response.choices[0].message.content || '{}'));
     this.logger.log(`OpenAI parsing complete. isListing: ${result.isListing}`);
-    return result as ExtractedListing;
+    return result;
   }
 
   /**

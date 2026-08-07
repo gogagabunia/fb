@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { getListingById, getMarketplaceListings } from '../../actions';
+import { getListingById, getSimilarListings } from '../../actions';
 import ListingDetailClient from './ListingDetailClient';
 
 interface PageProps {
@@ -80,11 +80,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
     );
   }
 
-  // 2. Fetch similar listings for related carousel (in same category or general)
-  const allListings = await getMarketplaceListings();
-  const similarListings = allListings
-    .filter((l) => l.id !== listing.id && (l.category === listing.category || l.price > 10000))
-    .slice(0, 4) as any[];
+  // 2. Fetch similar listings for related carousel (same category)
+  const similarListings = (await getSimilarListings(listing.id, listing.category)) as any[];
 
   return <ListingDetailClient listing={listing as any} similarListings={similarListings} />;
 }

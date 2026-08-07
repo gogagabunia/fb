@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getMarketplaceListings, getFavoritedIdsAction, toggleFavoriteAction } from '../actions';
+import { getMarketplaceListings, getFeaturedListings, getCategories, getFavoritedIdsAction, toggleFavoriteAction } from '../actions';
 import SearchBar from './components/search-bar';
 import { MarketplaceSkeleton } from '../components/skeleton';
 import { isFeaturedNow } from '../lib/featured';
@@ -34,30 +34,96 @@ interface Listing {
 
 export default function MarketplacePage() {
   const [listings, setListings] = useState<Listing[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [favoritedIds, setFavoritedIds] = useState<string[]>([]);
+  const [featured, setFeatured] = useState<Listing[]>([]);
+  const [categories, setCategories] = useState<string[]>(['All']);
 
-  // Load from database server action
+  // Loaded once: the category list and the featured grid must not be limited to
+  // whichever page happens to be loaded.
   useEffect(() => {
-    async function loadData() {
+    async function loadStatic() {
       try {
-        const data = await getMarketplaceListings();
-        setListings(data as any);
-        const favIds = await getFavoritedIdsAction();
+        const [cats, feat, favIds] = await Promise.all([
+          getCategories(),
+          getFeaturedListings(),
+          getFavoritedIdsAction()
+        ]);
+        setCategories(['All', ...cats.map((c: any) => c.name)]);
+        setFeatured(feat as any);
         setFavoritedIds(favIds);
+      } catch (error) {
+        console.error('Error loading marketplace metadata:', error);
+      }
+    }
+    loadStatic();
+  }, []);
+
+  // Filters now run in the database, so any change refetches page 0. Debounced
+  // so typing in the search box doesn't fire a query per keystroke.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const result = await getMarketplaceListings({
+          search,
+          category,
+          minPrice: minPrice ? parseFloat(minPrice) : null,
+          maxPrice: maxPrice ? parseFloat(maxPrice) : null,
+          sortBy: sortBy as 'newest' | 'price-asc' | 'price-desc',
+          page: 0
+        });
+        if (cancelled) return;
+        setListings(result.items as any);
+        setTotal(result.total);
+        setHasMore(result.hasMore);
+        setPage(0);
       } catch (error) {
         console.error('Error fetching marketplace listings:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, category, minPrice, maxPrice, sortBy]);
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      const result = await getMarketplaceListings({
+        search,
+        category,
+        minPrice: minPrice ? parseFloat(minPrice) : null,
+        maxPrice: maxPrice ? parseFloat(maxPrice) : null,
+        sortBy: sortBy as 'newest' | 'price-asc' | 'price-desc',
+        page: next
+      });
+      setListings((prev) => [...prev, ...(result.items as any)]);
+      setHasMore(result.hasMore);
+      setPage(next);
+    } catch (error) {
+      console.error('Error loading more listings:', error);
+    } finally {
+      setLoadingMore(false);
     }
-    loadData();
-  }, []);
+  }
 
   async function handleToggleFavorite(listingId: string, title: string) {
     try {
@@ -76,43 +142,14 @@ export default function MarketplacePage() {
     }
   }
 
-  // Compute unique categories dynamically from database listings, merging in defaults
-  const categories = ['All', ...Array.from(new Set(listings.map((l) => l.category)))];
+  // `listings` is already filtered, sorted and paginated by the database.
+  const filteredListings = listings;
 
-  const filteredListings = listings
-    .filter((item) => {
-      const matchesSearch =
-        item.title.toLowerCase().includes(search.toLowerCase()) ||
-        item.description.toLowerCase().includes(search.toLowerCase()) ||
-        (item.category && item.category.toLowerCase().includes(search.toLowerCase())) ||
-        (item.importedPost?.group.name && item.importedPost.group.name.toLowerCase().includes(search.toLowerCase()));
-
-      const matchesCategory = category === 'All' || item.category === category;
-
-      const price = item.price;
-      const min = minPrice ? parseFloat(minPrice) : 0;
-      const max = maxPrice ? parseFloat(maxPrice) : Infinity;
-      const matchesPrice = price >= min && price <= max;
-
-      return matchesSearch && matchesCategory && matchesPrice;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'price-asc') {
-        return a.price - b.price;
-      } else if (sortBy === 'price-desc') {
-        return b.price - a.price;
-      } else {
-        // 'newest'
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-    });
-
-  // Bento featured items: promoted listings whose paid window is still open,
-  // falling back to highest-price listings to fill the two slots.
-  const dbFeatured = listings.filter((l) => isFeaturedNow(l));
-  const featuredItems = dbFeatured.length >= 2
-    ? dbFeatured.slice(0, 2)
-    : [...dbFeatured, ...listings.filter((l) => !isFeaturedNow(l) && l.price > 10000)].slice(0, 2);
+  // Bento featured slots: promoted listings whose paid window is still open,
+  // topped up from the current page so the grid isn't empty before anyone pays.
+  const featuredItems = featured.length >= 2
+    ? featured.slice(0, 2)
+    : [...featured, ...listings.filter((l) => !isFeaturedNow(l) && l.price > 10000)].slice(0, 2);
   const mainFeatured = featuredItems[0];
   const sideFeatured = featuredItems[1];
 
@@ -280,7 +317,9 @@ export default function MarketplacePage() {
                     {category !== 'All' ? `${category} Listings` : 'All Inventory'}
                   </h2>
                   <p className="text-on-surface-variant text-body-xs md:text-body-sm mt-xs">
-                    Showing {filteredListings.length} matching item{filteredListings.length !== 1 ? 's' : ''}
+                    {/* `total` is the full match count, not just what's loaded —
+                        showing the loaded count would understate the results. */}
+                    Showing {filteredListings.length} of {total} matching item{total !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
@@ -357,12 +396,20 @@ export default function MarketplacePage() {
               )}
             </div>
 
-            {/* Load More Button */}
-            {!loading && filteredListings.length > 0 && (
+            {/* Load More — only shown when the database actually has another
+                page. Previously this button was always rendered and had no
+                onClick handler at all. */}
+            {!loading && hasMore && (
               <div className="mt-xxl flex justify-center">
-                <button className="flex items-center gap-sm px-xl py-2 bg-surface-container-high text-primary rounded-full text-xs font-bold hover:bg-surface-container-highest transition-all">
-                  <span>Explore More Listings</span>
-                  <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="flex items-center gap-sm px-xl py-2 bg-surface-container-high text-primary rounded-full text-xs font-bold hover:bg-surface-container-highest transition-all disabled:opacity-60"
+                >
+                  <span>{loadingMore ? 'Loading…' : 'Explore More Listings'}</span>
+                  <span className="material-symbols-outlined text-[16px]">
+                    {loadingMore ? 'progress_activity' : 'expand_more'}
+                  </span>
                 </button>
               </div>
             )}
