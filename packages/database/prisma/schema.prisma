@@ -62,6 +62,11 @@ model FacebookGroup {
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   importedPosts   ImportedPost[]
   scrapingLogs    ScrapingLog[]
+
+  // Postgres does not index foreign keys automatically, and every read here
+  // filters by owner or by isActive. Without these it is a sequential scan.
+  @@index([userId, createdAt])  // getFacebookGroups, dashboard "recent groups"
+  @@index([isActive])           // cron: every active group across all owners
 }
 
 model ImportedPost {
@@ -86,6 +91,11 @@ model ImportedPost {
 
   // Listing correlation once approved
   listing        Listing?
+
+  // Ordered by userId first: every query is owner-scoped, then narrowed by
+  // status (moderation queue, dashboard counts) and sorted by scrapedAt.
+  @@index([userId, status, scrapedAt])
+  @@index([groupId])
 }
 
 model Listing {
@@ -116,6 +126,11 @@ model Listing {
   tags           Tag[]            @relation("ListingTags")
   savedBy        SavedListing[]
   analyticsEvents AnalyticsEvent[]
+
+  // The marketplace feed is `where isActive` + `order by createdAt desc` — the
+  // hottest query in the app and the one that grows without bound.
+  @@index([isActive, createdAt])
+  @@index([categoryId])
 }
 
 model Category {
@@ -142,6 +157,9 @@ model ScrapingLog {
   
   groupId        String
   group          FacebookGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // Dashboard reads the 6 most recent logs for the owner's groups.
+  @@index([groupId, startedAt])
 }
 
 model SavedListing {
@@ -153,6 +171,9 @@ model SavedListing {
   createdAt DateTime @default(now())
 
   @@unique([userId, listingId])
+  // The unique index above already serves userId lookups; listingId does not
+  // have one, and cascade deletes on a listing scan by it.
+  @@index([listingId])
 }
 
 model AnalyticsEvent {
@@ -161,4 +182,8 @@ model AnalyticsEvent {
   listingId String
   listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  // Analytics counts filter by listing + event, and the weekly series adds a
+  // createdAt window. This table grows fastest of all — one row per page view.
+  @@index([listingId, event, createdAt])
 }

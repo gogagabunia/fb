@@ -95,23 +95,34 @@ export async function getDashboardStats() {
     }
 
     // Everything on the dashboard is scoped to the logged-in owner.
-    const connectedGroups = await prisma.facebookGroup.count({ where: { isActive: true, userId } });
-    const pendingPosts = await prisma.importedPost.count({ where: { status: 'PENDING', userId } });
-    const approvedListings = await prisma.listing.count({ where: { isActive: true, importedPost: { userId } } });
-    const rejectedPosts = await prisma.importedPost.count({ where: { status: 'REJECTED', userId } });
-
-    const recentLogs = await prisma.scrapingLog.findMany({
-      take: 6,
-      where: { group: { userId } },
-      include: { group: true },
-      orderBy: { startedAt: 'desc' }
-    });
-
-    const recentGroups = await prisma.facebookGroup.findMany({
-      take: 5,
-      where: { userId },
-      orderBy: { createdAt: 'desc' }
-    });
+    //
+    // These six reads are independent, so they go out together. Awaiting them
+    // one after another made the dashboard six sequential round-trips to
+    // Postgres when it only ever needed one.
+    const [
+      connectedGroups,
+      pendingPosts,
+      approvedListings,
+      rejectedPosts,
+      recentLogs,
+      recentGroups
+    ] = await Promise.all([
+      prisma.facebookGroup.count({ where: { isActive: true, userId } }),
+      prisma.importedPost.count({ where: { status: 'PENDING', userId } }),
+      prisma.listing.count({ where: { isActive: true, importedPost: { userId } } }),
+      prisma.importedPost.count({ where: { status: 'REJECTED', userId } }),
+      prisma.scrapingLog.findMany({
+        take: 6,
+        where: { group: { userId } },
+        include: { group: true },
+        orderBy: { startedAt: 'desc' }
+      }),
+      prisma.facebookGroup.findMany({
+        take: 5,
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
 
     return {
       connectedGroups,
