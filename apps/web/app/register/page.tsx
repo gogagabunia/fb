@@ -87,6 +87,31 @@ export default function RegisterPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-lg">
+              {/* Buyer is the default; the server degrades anything else sent
+                  here back to BUYER, so this control is a preference, not an
+                  authority. */}
+              <fieldset>
+                <legend className="block text-label-sm font-bold text-on-surface-variant mb-xs">
+                  What brings you here? *
+                </legend>
+                <div className="grid grid-cols-2 gap-md">
+                  <label className="flex items-start gap-sm border border-outline-variant rounded-lg p-md cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-colors">
+                    <input type="radio" name="role" value="BUYER" defaultChecked className="mt-1 accent-current" />
+                    <span>
+                      <span className="block font-bold text-body-md text-primary">I want to buy</span>
+                      <span className="block text-body-sm text-on-surface-variant">Browse listings and save favorites</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-sm border border-outline-variant rounded-lg p-md cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-colors">
+                    <input type="radio" name="role" value="SELLER" className="mt-1 accent-current" />
+                    <span>
+                      <span className="block font-bold text-body-md text-primary">I want to sell</span>
+                      <span className="block text-body-sm text-on-surface-variant">Import listings from my Facebook group</span>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+
               <div className="grid grid-cols-2 gap-md">
                 <div>
                   <label htmlFor="firstName" className="block text-label-sm font-bold text-on-surface-variant mb-xs">

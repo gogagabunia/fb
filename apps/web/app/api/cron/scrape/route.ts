@@ -43,9 +43,17 @@ export async function POST(req: Request) {
     // always synced and the same ones always starved — a run reported
     // groupsNotAttempted: ["car","asd","asd"] every single time. Rotating means
     // a group missed by one run is first in the next.
+    // Only groups whose owner may sell get synced. A group owned by a buyer —
+    // e.g. a seller demoted by the admin — is reported, not silently skipped,
+    // so a stopped pipeline is visible in the telemetry.
     const activeGroups = await prisma.facebookGroup.findMany({
-      where: { isActive: true },
+      where: { isActive: true, user: { role: { in: ['SELLER', 'ADMIN'] } } },
       orderBy: { lastSyncedAt: { sort: 'asc', nulls: 'first' } }
+    });
+
+    const ownerNotSeller = await prisma.facebookGroup.findMany({
+      where: { isActive: true, user: { role: { notIn: ['SELLER', 'ADMIN'] } } },
+      select: { name: true }
     });
 
     if (activeGroups.length === 0) {
@@ -120,6 +128,7 @@ export async function POST(req: Request) {
       timestamp: new Date().toISOString(),
       groupsProcessed: telemetry.length,
       groupsNotAttempted: notAttempted,
+      skippedOwnerNotSeller: ownerNotSeller.map(g => g.name),
       newListingsImported: totalImported,
       postsUnparsed: totalUnparsed,
       details: telemetry

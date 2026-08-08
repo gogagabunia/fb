@@ -13,7 +13,7 @@ interface TopListing {
   price: number;
   viewsCount: number;
   clicksCount: number;
-  category: string;
+  categoryRel: { name: string } | null;
 }
 
 interface DailyView {
@@ -196,7 +196,7 @@ export default async function AnalyticsPage() {
                             <span className="font-bold text-body-md text-primary block truncate max-w-[150px]" title={item.title}>
                               {item.title}
                             </span>
-                            <span className="text-[10px] text-on-surface-variant font-medium uppercase">{item.category} • ${item.price.toLocaleString()}</span>
+                            <span className="text-[10px] text-on-surface-variant font-medium uppercase">{item.categoryRel?.name ?? 'Other'} • ${item.price.toLocaleString()}</span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">

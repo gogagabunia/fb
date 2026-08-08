@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getMarketplaceListings, getFeaturedListings, getCategories, getFavoritedIdsAction, toggleFavoriteAction } from '../actions';
 import SearchBar from './components/search-bar';
 import { MarketplaceSkeleton } from '../components/skeleton';
 import { isFeaturedNow } from '../lib/featured';
+import { categoryBySlug } from '../lib/categories';
 
 interface Listing {
   id: string;
@@ -32,13 +34,21 @@ interface Listing {
   };
 }
 
-export default function MarketplacePage() {
+// Wrapped in Suspense below: useSearchParams() opts the page into dynamic
+// rendering, and Next requires a boundary around it for the build.
+function MarketplaceContent() {
+  // Homepage category tiles and the search bar land here as URL params.
+  const params = useSearchParams();
   const [listings, setListings] = useState<Listing[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('All');
+  const [search, setSearch] = useState(params.get('search') ?? '');
+  // Homepage links carry slugs; the filter dropdown works in display names.
+  const initialCategory = params.get('category');
+  const [category, setCategory] = useState(
+    initialCategory ? (categoryBySlug(initialCategory)?.name ?? initialCategory) : 'All'
+  );
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState('newest');
@@ -417,5 +427,13 @@ export default function MarketplacePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function MarketplacePage() {
+  return (
+    <Suspense fallback={<MarketplaceSkeleton />}>
+      <MarketplaceContent />
+    </Suspense>
   );
 }

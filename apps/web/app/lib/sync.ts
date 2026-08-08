@@ -6,6 +6,7 @@ import { PlaywrightScraperService, type ApifyRunReport } from '../../../api/src/
 import { OpenAIParserService, type ExtractedListing } from '../../../api/src/parser/openai-parser.service';
 import { emptyScrapeHint } from './sync-diagnostics';
 import { requireImagesEnabled, selectPosts } from './post-filter';
+import { can } from './authz';
 
 export interface SyncResult {
   success: boolean;
@@ -85,6 +86,16 @@ export async function syncGroupById(
 
   if (!group) {
     return { success: false, error: `Group with ID ${groupId} not found` };
+  }
+
+  // The owner must be allowed to sell. The cron filters this in its query;
+  // this covers the interactive path and anything else that reaches here, so
+  // a demoted seller's groups stop syncing everywhere at once.
+  if (!can(group.user?.role, 'sell')) {
+    return {
+      success: false,
+      error: 'This group\'s owner is not a seller, so it does not sync.'
+    };
   }
 
   // Cookie preference order (applies to BOTH public and private groups, because
@@ -268,6 +279,7 @@ export async function syncGroupById(
           images: await persistImages(post.images, imageKey),
           authorName: post.author,
           priceScraped: parsed.price || null,
+          parsedCategory: parsed.category || null,
           status: 'PENDING',
           groupId: group.id,
           userId: group.userId

@@ -196,7 +196,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-display-lg font-bold text-primary">{stats.pendingPosts}</span>
                     <Link
-                      href="/admin"
+                      href="/dashboard/moderation"
                       className="bg-error-container text-on-error-container px-sm py-xs rounded-full text-label-sm font-bold hover:scale-[1.02] transition-all"
                     >
                       Needs Review

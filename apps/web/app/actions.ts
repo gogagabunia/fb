@@ -6,37 +6,27 @@ import { getSession } from './lib/auth';
 import { prisma } from './lib/prisma';
 import { syncGroupById, type SyncResult } from './lib/sync';
 import { saveFbCookies } from './lib/fb-session';
-
-/** Build a URL-safe slug from a category name. */
-function slugifyCategory(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'category';
-}
+import { requireCapability, can } from './lib/authz';
+import { categoryBySlug, type CategoryDef } from './lib/categories';
 
 /**
- * Resolve the Category row for `name`, creating it if it doesn't exist yet.
- *
- * Both `name` and `slug` are unique, so a naive find-then-create breaks in two
- * ways this handles: two approvals racing on the same new category, and two
- * different names slugifying to the same slug ("Real Estate" / "Real-Estate").
+ * Resolve the Category row for a fixed-list category, creating it on first
+ * use. Approval only ever passes definitions from lib/categories.ts — free
+ * text stopped being accepted when the list became fixed — so the only race
+ * left is two first-approvals of the same category, which the P2002 retry
+ * settles.
  */
-async function findOrCreateCategory(name: string) {
-  const existing = await prisma.category.findUnique({ where: { name } });
+async function findOrCreateCategory(def: CategoryDef) {
+  const existing = await prisma.category.findUnique({ where: { slug: def.slug } });
   if (existing) return existing;
-
-  const base = slugifyCategory(name);
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const slug = attempt === 0 ? base : `${base}-${attempt + 1}`;
-    try {
-      return await prisma.category.create({ data: { name, slug } });
-    } catch (error: any) {
-      if (error?.code !== 'P2002') throw error; // not a unique-constraint clash
-      // Lost a race on `name` → reuse whatever the winner created.
-      const raced = await prisma.category.findUnique({ where: { name } });
-      if (raced) return raced;
-      // Otherwise the clash was on `slug`; try the next suffix.
-    }
+  try {
+    return await prisma.category.create({ data: { name: def.name, slug: def.slug } });
+  } catch (error: any) {
+    if (error?.code !== 'P2002') throw error;
+    const raced = await prisma.category.findUnique({ where: { slug: def.slug } });
+    if (raced) return raced;
+    throw error;
   }
-  throw new Error(`Could not allocate a unique slug for category "${name}"`);
 }
 
 // Not exported: a 'use server' module may only export async functions. The
@@ -86,7 +76,9 @@ export async function getMarketplaceListings(query: MarketplaceQuery = {}) {
     const where: any = { isActive: true };
 
     if (category && category !== 'All') {
-      where.category = category;
+      // Accepts either the display name (the filter dropdown) or the slug
+      // (homepage links like /marketplace?category=vehicles).
+      where.categoryRel = { OR: [{ name: category }, { slug: category }] };
     }
 
     if (minPrice != null || maxPrice != null) {
@@ -100,7 +92,7 @@ export async function getMarketplaceListings(query: MarketplaceQuery = {}) {
       where.OR = [
         { title: { contains: term, mode: 'insensitive' } },
         { description: { contains: term, mode: 'insensitive' } },
-        { category: { contains: term, mode: 'insensitive' } },
+        { categoryRel: { name: { contains: term, mode: 'insensitive' } } },
         { importedPost: { group: { name: { contains: term, mode: 'insensitive' } } } }
       ];
     }
@@ -130,13 +122,13 @@ export async function getMarketplaceListings(query: MarketplaceQuery = {}) {
  *
  * This used to pull every active listing and filter four out of it in memory.
  */
-export async function getSimilarListings(listingId: string, category: string, take = 4) {
+export async function getSimilarListings(listingId: string, categoryId: string, take = 4) {
   try {
     return await prisma.listing.findMany({
       where: {
         isActive: true,
         id: { not: listingId },
-        category
+        categoryId
       },
       include: LISTING_INCLUDE,
       orderBy: { createdAt: 'desc' },
@@ -199,10 +191,11 @@ export async function getListingById(id: string) {
  */
 export async function getDashboardStats() {
   try {
-    const userId = await getSession();
-    if (!userId) {
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
       return { connectedGroups: 0, pendingPosts: 0, approvedListings: 0, rejectedPosts: 0, recentLogs: [], recentGroups: [] };
     }
+    const userId = authz.userId;
 
     // Everything on the dashboard is scoped to the logged-in owner.
     //
@@ -275,10 +268,10 @@ export async function getDashboardStats() {
  */
 export async function getImportedPosts(status?: PostStatus) {
   try {
-    const userId = await getSession();
-    if (!userId) return [];
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) return [];
     return await prisma.importedPost.findMany({
-      where: { userId, ...(status ? { status } : {}) },
+      where: { userId: authz.userId, ...(status ? { status } : {}) },
       include: { group: true },
       orderBy: { scrapedAt: 'desc' }
     });
@@ -293,10 +286,10 @@ export async function getImportedPosts(status?: PostStatus) {
  */
 export async function getFacebookGroups() {
   try {
-    const userId = await getSession();
-    if (!userId) return [];
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) return [];
     return await prisma.facebookGroup.findMany({
-      where: { userId },
+      where: { userId: authz.userId },
       orderBy: { createdAt: 'desc' }
     });
   } catch (error) {
@@ -310,16 +303,28 @@ export async function getFacebookGroups() {
  */
 export async function connectFacebookGroup(data: { name: string; url: string; groupId: string; keywords: string[]; isPublic?: boolean }) {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in to connect a group.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in to connect a group.' };
     }
+    const userId = authz.userId;
 
     // Visibility is chosen by the owner in the connect form. Auto-detection is
     // unreliable with the Apify actor (it needs cookies even for public groups,
     // so a probe can't tell public from private). Private groups are gated on a
     // Facebook session at sync time; public groups sync via the shared session.
     const isPublic = data.isPublic === true;
+
+    // The upsert used to hand over any existing record with the same Facebook
+    // groupId to whoever submitted it — harmless when every account was an
+    // admin, a takeover hole with real multi-seller accounts.
+    const taken = await prisma.facebookGroup.findUnique({
+      where: { groupId: data.groupId },
+      select: { userId: true }
+    });
+    if (taken && taken.userId !== userId) {
+      return { success: false, error: 'This Facebook group is already connected by another seller.' };
+    }
 
     const group = await prisma.facebookGroup.upsert({
       where: { groupId: data.groupId },
@@ -363,9 +368,17 @@ export async function approvePostAction(id: string, data: {
   specs: any;
 }) {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in to moderate posts.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in to moderate posts.' };
+    }
+
+    // The category arrives as a slug from the fixed-list dropdown. Anything
+    // else — old clients, tampering — is refused rather than becoming a new
+    // category, which is exactly how free text produced "car"/"Cars"/"vehicle".
+    const categoryDef = categoryBySlug(data.category);
+    if (!categoryDef) {
+      return { success: false, error: 'Choose a category from the list.' };
     }
 
     const importedPost = await prisma.importedPost.findUnique({
@@ -375,8 +388,9 @@ export async function approvePostAction(id: string, data: {
 
     // Ownership is checked here, not in the page or the middleware: a server
     // action can be invoked by POSTing its action id to ANY route, including
-    // routes the middleware matcher doesn't cover.
-    if (!importedPost || importedPost.userId !== userId) {
+    // routes the middleware matcher doesn't cover. Admins pass via
+    // moderate_all — the admin panel approves on any seller's behalf.
+    if (!importedPost || (importedPost.userId !== authz.userId && !can(authz.role, 'moderate_all'))) {
       return { success: false, error: 'Post not found or not owned by you.' };
     }
 
@@ -387,7 +401,7 @@ export async function approvePostAction(id: string, data: {
     });
 
     // 2. Find or create the target Category
-    const category = await findOrCreateCategory(data.category);
+    const category = await findOrCreateCategory(categoryDef);
 
     // 3. Create the live public listing
     const listing = await prisma.listing.create({
@@ -397,7 +411,6 @@ export async function approvePostAction(id: string, data: {
         description: data.description,
         images: importedPost.images,
         location: data.location || 'Unknown Location',
-        category: data.category,
         specs: data.specs || {},
         originalPostUrl: importedPost.fbPostId,
         contactUrl: importedPost.authorProfile || `https://facebook.com/profile`,
@@ -421,13 +434,13 @@ export async function approvePostAction(id: string, data: {
  */
 export async function rejectPostAction(id: string, reason: string) {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in to moderate posts.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in to moderate posts.' };
     }
 
     const existing = await prisma.importedPost.findUnique({ where: { id }, select: { userId: true } });
-    if (!existing || existing.userId !== userId) {
+    if (!existing || (existing.userId !== authz.userId && !can(authz.role, 'moderate_all'))) {
       return { success: false, error: 'Post not found or not owned by you.' };
     }
 
@@ -453,14 +466,14 @@ export async function rejectPostAction(id: string, reason: string) {
  */
 export async function triggerScrapingAction(groupId: string): Promise<SyncResult> {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in to sync a group.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in to sync a group.' };
     }
 
-    // Only the owner may sync their group.
+    // Only the owner may sync their group; admins may sync any.
     const owned = await prisma.facebookGroup.findUnique({ where: { id: groupId }, select: { userId: true } });
-    if (!owned || owned.userId !== userId) {
+    if (!owned || (owned.userId !== authz.userId && !can(authz.role, 'moderate_all'))) {
       return { success: false, error: 'Group not found or not owned by you.' };
     }
 
@@ -494,10 +507,11 @@ export async function getCategories() {
  */
 export async function toggleFavoriteAction(listingId: string) {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in to save listings.' };
+    const authz = await requireCapability('save_favorites');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in to save listings.' };
     }
+    const userId = authz.userId;
 
     const existing = await prisma.savedListing.findUnique({
       where: {
@@ -544,8 +558,9 @@ export async function toggleFavoriteAction(listingId: string) {
  */
 export async function getFavoritesAction() {
   try {
-    const userId = await getSession();
-    if (!userId) return [];
+    const authz = await requireCapability('save_favorites');
+    if (authz.error || !authz.userId) return [];
+    const userId = authz.userId;
 
     const saved = await prisma.savedListing.findMany({
       where: { userId },
@@ -576,8 +591,9 @@ export async function getFavoritesAction() {
  */
 export async function getFavoritedIdsAction() {
   try {
-    const userId = await getSession();
-    if (!userId) return [];
+    const authz = await requireCapability('save_favorites');
+    if (authz.error || !authz.userId) return [];
+    const userId = authz.userId;
 
     const saved = await prisma.savedListing.findMany({
       where: { userId },
@@ -678,13 +694,14 @@ export async function getAnalyticsSummaryAction() {
     contactClicks: 0,
     fbClicks: 0,
     ctr: 0,
-    topListings: [] as { id: string; title: string; price: number; viewsCount: number; clicksCount: number; category: string }[],
+    topListings: [] as { id: string; title: string; price: number; viewsCount: number; clicksCount: number; categoryRel: { name: string } | null }[],
     dailyViews: [] as { date: string; views: number }[]
   };
 
   try {
-    const userId = await getSession();
-    if (!userId) return empty;
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) return empty;
+    const userId = authz.userId;
 
     // Scope to the caller's own listings — this was previously a platform-wide
     // aggregate, which leaked other tenants' traffic.
@@ -709,7 +726,7 @@ export async function getAnalyticsSummaryAction() {
           price: true,
           viewsCount: true,
           clicksCount: true,
-          category: true
+          categoryRel: { select: { name: true } }
         }
       })
     ]);
@@ -757,10 +774,11 @@ export async function getAnalyticsSummaryAction() {
  */
 export async function ingestRawTextAction(groupId: string, rawText: string) {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in to ingest items.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in to ingest items.' };
     }
+    const userId = authz.userId;
 
     const group = await prisma.facebookGroup.findUnique({
       where: { id: groupId }
@@ -820,13 +838,13 @@ export async function ingestRawTextAction(groupId: string, rawText: string) {
  */
 export async function updateFacebookGroupAction(id: string, data: { name: string; url: string; keywords: string[] }) {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in.' };
     }
     // Only the owner may edit their group.
     const existing = await prisma.facebookGroup.findUnique({ where: { id }, select: { userId: true } });
-    if (!existing || existing.userId !== userId) {
+    if (!existing || existing.userId !== authz.userId) {
       return { success: false, error: 'Group not found or not owned by you.' };
     }
 
@@ -853,13 +871,13 @@ export async function updateFacebookGroupAction(id: string, data: { name: string
  */
 export async function disconnectFacebookGroupAction(id: string) {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in.' };
     }
     // Only the owner may delete their group (cascades raw posts & logs).
     const existing = await prisma.facebookGroup.findUnique({ where: { id }, select: { userId: true } });
-    if (!existing || existing.userId !== userId) {
+    if (!existing || existing.userId !== authz.userId) {
       return { success: false, error: 'Group not found or not owned by you.' };
     }
 
@@ -883,11 +901,11 @@ export async function disconnectFacebookGroupAction(id: string) {
  */
 export async function saveFacebookSession(cookiesJson: string) {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in.' };
     }
-    const result = await saveFbCookies(userId, cookiesJson);
+    const result = await saveFbCookies(authz.userId, cookiesJson);
     if (result.success) {
       revalidatePath('/dashboard');
       revalidatePath('/settings');
@@ -904,10 +922,10 @@ export async function saveFacebookSession(cookiesJson: string) {
  */
 export async function getFbConnectionStatus() {
   try {
-    const userId = await getSession();
-    if (!userId) return { connected: false, status: 'NONE' as const, savedAt: null };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) return { connected: false, status: 'NONE' as const, savedAt: null };
     const u = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: authz.userId },
       select: { fbSessionStatus: true, fbSessionSavedAt: true }
     });
     return {
@@ -926,12 +944,12 @@ export async function getFbConnectionStatus() {
  */
 export async function disconnectFacebookSession() {
   try {
-    const userId = await getSession();
-    if (!userId) {
-      return { success: false, error: 'You must be logged in.' };
+    const authz = await requireCapability('sell');
+    if (authz.error || !authz.userId) {
+      return { success: false, error: authz.error ?? 'You must be logged in.' };
     }
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: authz.userId },
       data: { fbSessionCookies: null, fbSessionStatus: 'NONE', fbSessionSavedAt: null }
     });
     revalidatePath('/dashboard');

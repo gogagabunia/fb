@@ -3,6 +3,46 @@
 Imports posts from Facebook groups, extracts classified-ad details with an LLM,
 and publishes approved items as marketplace listings after human moderation.
 
+## Roles
+
+Three kinds of account, chosen on the register form (`ADMIN_EMAIL` overrides):
+
+| Area | Public | BUYER | SELLER | ADMIN |
+| --- | --- | --- | --- | --- |
+| Homepage, categories, listing pages | ✔ | ✔ | ✔ | ✔ |
+| Favorites | — | ✔ | ✔ | ✔ |
+| Dashboard, groups, moderation, connect Facebook | — | — | own only | all |
+| Admin panel (`/admin`): users & roles, all listings, all queues | — | — | — | ✔ |
+
+Rules live in one file — `apps/web/app/lib/authz.ts` maps roles to
+capabilities, and every protected server action asks `requireCapability(...)`,
+which reads the role from the database per call (promotions apply without
+re-login). Nothing else compares roles.
+
+Buyers cannot self-upgrade; the admin changes roles in `/admin` → Users. Sync
+only runs for groups whose owner is a SELLER or ADMIN — a demoted seller's
+pipeline stops everywhere at once, reported as `skippedOwnerNotSeller` in the
+cron telemetry.
+
+Categories are a fixed list in `apps/web/app/lib/categories.ts` (15 entries,
+ending in Other). The moderation form is a dropdown of exactly this list, the
+AI parser's guess pre-selects it (stored on `ImportedPost.parsedCategory`),
+and approval rejects anything not on the list. The homepage renders the same
+list with live counts.
+
+### Migrating an existing deployment to roles
+
+One-time, in this order:
+
+1. Merge and let Vercel deploy.
+2. Run `scripts/reset-and-migrate-roles.sql` in the Neon console — **deletes
+   all data** (the owner asked for a clean slate) and converts the Role enum.
+   Registration errors in the minutes between deploy and SQL; that window ends
+   when both are done.
+3. Set `ADMIN_EMAIL` in Vercel and redeploy.
+4. Register with that email → the account is ADMIN. Re-add groups and
+   reconnect Facebook from `/connect-facebook`.
+
 ## Layout
 
 | Path | What it is |
@@ -53,6 +93,7 @@ Generate the secrets with `openssl rand -base64 48`.
 | `SYNC_MAX_POSTS` | How many recent posts each sync pulls per group. Defaults to 5. |
 | `SYNC_SINCE_DAYS` | Date window in days; defaults to 0, meaning no window — just the most recent posts. |
 | `SYNC_REQUIRE_IMAGES` | `false` imports text-only posts too. On by default, so a post with no photo never reaches the queue. |
+| `ADMIN_EMAIL` | Registration with this email (case-insensitive) gets the ADMIN role. Unset → nobody is auto-promoted. |
 | `USE_MOCK_SCRAPER` | `true` returns canned posts when a scrape fails. |
 | `ALLOW_SIMULATED_CHECKOUT` | `true` grants promotions without payment. Development only — ignored when `NODE_ENV=production`. |
 
