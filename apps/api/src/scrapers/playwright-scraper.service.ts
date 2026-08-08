@@ -3,8 +3,9 @@ import {
   APIFY_LOG_TAIL_CHARS,
   APIFY_MAX_WAIT_SECONDS,
   apifyWaitSeconds,
+  normalizeProxyUrl,
   redactApifyLog
-} from './apify-log';
+} from './apify';
 
 // Reuse one PrismaClient across invocations — a per-instance client exhausts the
 // connection pool when several syncs run in the same process.
@@ -267,7 +268,14 @@ export class PlaywrightScraperService {
     // read "No proxy configured", "Injecting 10 cookies", then "Login prompt
     // detected" and zero posts. Any residential proxy URL works; Apify's own is
     // `http://groups-RESIDENTIAL:<password>@proxy.apify.com:8000`.
-    const proxyUrl = process.env.APIFY_PROXY_URL;
+    const proxy = normalizeProxyUrl(process.env.APIFY_PROXY_URL);
+    if (proxy.error) {
+      // Refuse before starting anything. A malformed value fails identically
+      // for every group, and discovering that five times over costs five actor
+      // runs to learn one thing.
+      throw new Error(`${proxy.error} — no Apify run was started.`);
+    }
+    const proxyUrl = proxy.url;
     if (proxyUrl) {
       input.proxyUrl = proxyUrl;
     } else {
