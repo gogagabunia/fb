@@ -5,6 +5,19 @@ import { syncGroupById } from '../../../lib/sync';
 // Scrapes are slow (Apify sync run) — give the cron the Hobby max budget.
 export const maxDuration = 60;
 
+/**
+ * Hard cutoff for the whole request, comfortably inside maxDuration.
+ *
+ * Vercel kills the function at 60s with FUNCTION_INVOCATION_TIMEOUT and the
+ * caller sees a 504 with no telemetry — every group's work is lost, including
+ * groups that had already finished. Stopping ourselves means the run always
+ * returns what it managed to do, and the rest is picked up next time.
+ */
+const REQUEST_BUDGET_MS = 50_000;
+
+/** Don't start another group unless there is a realistic chance of finishing. */
+const MIN_TIME_PER_GROUP_MS = 12_000;
+
 export async function POST(req: Request) {
   try {
     // 1. Verify cron authorization signature
@@ -27,16 +40,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: 'No active groups identified for ingestion.' });
     }
 
+    const deadline = Date.now() + REQUEST_BUDGET_MS;
     const telemetry: any[] = [];
+    const notAttempted: string[] = [];
 
     // 3. Process each active group. syncGroupById never throws for expected
     //    conditions (private group without an active session returns
     //    needsFacebook), so one blocked group doesn't stop the others.
     for (const group of activeGroups) {
+      if (Date.now() > deadline - MIN_TIME_PER_GROUP_MS) {
+        // Never silently drop a group — report it so a chronically starved
+        // group is visible rather than looking like it had nothing to import.
+        notAttempted.push(group.name);
+        continue;
+      }
+
       console.log(`[Cron Scrape] Synchronizing group "${group.name}"...`);
       let result;
       try {
-        result = await syncGroupById(group.id);
+        result = await syncGroupById(group.id, { deadline });
       } catch (err: any) {
         result = { success: false, error: err?.message || String(err) };
       }
@@ -58,14 +80,18 @@ export async function POST(req: Request) {
     const totalImported = telemetry.reduce((sum, item) => sum + item.listingsImported, 0);
     const totalUnparsed = telemetry.reduce((sum, item) => sum + item.postsUnparsed, 0);
     console.log(
-      `[Cron Scrape] Scheduled synchronization completed. Imported ${totalImported} new listings` +
-        (totalUnparsed > 0 ? `, ${totalUnparsed} post(s) left unparsed (time budget).` : '.')
+      `[Cron Scrape] Completed ${telemetry.length}/${activeGroups.length} group(s). ` +
+        `Imported ${totalImported} new listings` +
+        (totalUnparsed > 0 ? `, ${totalUnparsed} post(s) left for the next run` : '') +
+        (notAttempted.length > 0 ? `, not reached: ${notAttempted.join(', ')}` : '') +
+        '.'
     );
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
-      groupsProcessed: activeGroups.length,
+      groupsProcessed: telemetry.length,
+      groupsNotAttempted: notAttempted,
       newListingsImported: totalImported,
       postsUnparsed: totalUnparsed,
       details: telemetry

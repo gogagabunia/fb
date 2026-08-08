@@ -18,7 +18,10 @@ import { put } from '@vercel/blob';
 const MAX_BYTES = 8 * 1024 * 1024;
 /** Per-post cap, so one media-heavy post can't stall a sync. */
 const MAX_IMAGES = 6;
-const FETCH_TIMEOUT_MS = 15_000;
+// Kept tight: this runs per image, per post, inside a sync that has to finish
+// well inside the cron's 60s. A CDN image that hasn't started in 8s isn't
+// coming.
+const FETCH_TIMEOUT_MS = 8_000;
 
 let warnedMissingToken = false;
 

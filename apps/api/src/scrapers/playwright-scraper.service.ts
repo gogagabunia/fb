@@ -43,9 +43,9 @@ export class PlaywrightScraperService {
    */
   async scrapeGroup(
     groupId: string,
-    opts: { sinceDays?: number; maxPosts?: number; cookiesJson?: string | null } = {}
+    opts: { sinceDays?: number; maxPosts?: number; cookiesJson?: string | null; timeoutMs?: number } = {}
   ): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
-    const { sinceDays = 30, maxPosts = 100, cookiesJson = null } = opts;
+    const { sinceDays = 30, maxPosts = 100, cookiesJson = null, timeoutMs } = opts;
 
     const group = await this.prisma.facebookGroup.findUnique({
       where: { id: groupId }
@@ -64,7 +64,8 @@ export class PlaywrightScraperService {
           maxPosts,
           token: apifyToken,
           sinceDays,
-          cookiesJson
+          cookiesJson,
+          timeoutMs
         });
 
         // Auto-approve admin verification status since scrape was successful
@@ -176,9 +177,9 @@ export class PlaywrightScraperService {
    */
   private async scrapeGroupWithApify(
     groupUrl: string,
-    opts: { maxPosts: number; token: string; sinceDays?: number; cookiesJson?: string | null; noCookies?: boolean }
+    opts: { maxPosts: number; token: string; sinceDays?: number; cookiesJson?: string | null; noCookies?: boolean; timeoutMs?: number }
   ): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
-    const { maxPosts, token, sinceDays, cookiesJson = null, noCookies = false } = opts;
+    const { maxPosts, token, sinceDays, cookiesJson = null, noCookies = false, timeoutMs } = opts;
     this.logger.log(`Triggering Apify sync run for URL: ${groupUrl}`);
 
     // Input payload matching the whoareyouanas/facebook-group-scraper schema.
@@ -222,13 +223,31 @@ export class PlaywrightScraperService {
       }
     }
 
-    const response = await fetch(`https://api.apify.com/v2/acts/whoareyouanas~facebook-group-scraper/run-sync-get-dataset-items?token=${token}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
+    // run-sync-get-dataset-items blocks until the actor finishes, with no
+    // server-side cap. Unbounded, it swallowed the caller's whole budget — the
+    // cron route died at 60s with FUNCTION_INVOCATION_TIMEOUT before parsing
+    // anything.
+    const controller = new AbortController();
+    const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+    let response: Response;
+    try {
+      response = await fetch(`https://api.apify.com/v2/acts/whoareyouanas~facebook-group-scraper/run-sync-get-dataset-items?token=${token}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        throw new Error(`Apify run exceeded the ${timeoutMs}ms budget for this sync.`);
+      }
+      throw err;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

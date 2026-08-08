@@ -18,11 +18,19 @@ export interface SyncResult {
 const PARSE_CONCURRENCY = 5;
 
 /**
- * Wall-clock budget for the parsing phase. The Vercel cron route caps out at
- * 60s, and parsing used to be a fully sequential await per post (up to 100),
- * which blew the budget and killed every group later in the cron's loop.
+ * Wall-clock budget for the parsing phase, used when the caller gives no
+ * deadline of its own (e.g. the interactive Sync button).
+ *
+ * A budget on parsing alone is not enough: it starts only once the scrape has
+ * returned, and neither the scrape nor the image downloads were bounded. The
+ * cron route hit FUNCTION_INVOCATION_TIMEOUT (504) at 60s because of exactly
+ * that. Callers that have a hard limit should pass an absolute `deadline`, and
+ * every phase below then works back from it.
  */
 const PARSE_BUDGET_MS = 35_000;
+
+/** Leave room to still write results and return a response before the cutoff. */
+const WRAP_UP_RESERVE_MS = 5_000;
 
 
 /**
@@ -32,7 +40,13 @@ const PARSE_BUDGET_MS = 35_000;
  * the logged-in owner; the cron checks CRON_SECRET). Not a server action, so it
  * is never exposed to the client directly.
  */
-export async function syncGroupById(groupId: string): Promise<SyncResult> {
+export async function syncGroupById(
+  groupId: string,
+  opts: { deadline?: number } = {}
+): Promise<SyncResult> {
+  // Absolute cutoff (epoch ms) for the whole sync, not just one phase.
+  const deadline = opts.deadline ?? Date.now() + PARSE_BUDGET_MS * 2;
+  const timeLeft = () => deadline - Date.now();
   const group = await prisma.facebookGroup.findUnique({
     where: { id: groupId },
     include: { user: true }
@@ -72,7 +86,12 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
 
   let rawPosts;
   try {
-    rawPosts = await scraper.scrapeGroup(group.id, { sinceDays, maxPosts, cookiesJson });
+    rawPosts = await scraper.scrapeGroup(group.id, {
+      sinceDays,
+      maxPosts,
+      cookiesJson,
+      timeoutMs: Math.max(5_000, timeLeft() - WRAP_UP_RESERVE_MS)
+    });
   } catch (scrapeErr: any) {
     const msg = String(scrapeErr?.message || scrapeErr);
     // Sync-based detection: a login-wall / access failure means the cookies we
@@ -104,11 +123,11 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
   // clutter the moderation queue.
   const candidates = rawPosts.filter(post => post.text && post.text.trim().length >= 10);
 
-  const deadline = Date.now() + PARSE_BUDGET_MS;
+  const parseDeadline = Math.min(Date.now() + PARSE_BUDGET_MS, deadline - WRAP_UP_RESERVE_MS);
   let skipped = 0;
 
   const parsedPosts = await mapWithConcurrency(candidates, PARSE_CONCURRENCY, async post => {
-    if (Date.now() > deadline) {
+    if (Date.now() > parseDeadline) {
       skipped++;
       return null;
     }
@@ -124,8 +143,17 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
   const listings = parsedPosts.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
   let newCount = 0;
+  let unimported = 0;
 
   for (const { post, parsed } of listings) {
+    // Importing copies images into blob storage, which is another network round
+    // trip per post. Stop before the cutoff rather than being killed mid-write;
+    // whatever is left is picked up by the next run, since fbPostId dedupes.
+    if (Date.now() > deadline - WRAP_UP_RESERVE_MS) {
+      unimported++;
+      continue;
+    }
+
     const existing = await prisma.importedPost.findUnique({
       where: { fbPostId: post.id },
       select: { id: true, images: true }
@@ -180,10 +208,11 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
     }).catch((err: any) => console.error('Failed to trigger admin email notifier:', err));
   }
 
-  if (skipped > 0) {
+  if (skipped > 0 || unimported > 0) {
     console.warn(
-      `[Sync] Parsing budget (${PARSE_BUDGET_MS}ms) exhausted for group "${group.name}" — ` +
-        `${skipped} post(s) left unparsed. They will be retried on the next sync.`
+      `[Sync] Time budget exhausted for group "${group.name}" — ` +
+        `${skipped} post(s) left unparsed, ${unimported} parsed but not imported. ` +
+        `Both are retried on the next sync.`
     );
   }
 
@@ -203,6 +232,6 @@ export async function syncGroupById(groupId: string): Promise<SyncResult> {
     success: true,
     postsFound: rawPosts.length,
     listingsImported: newCount,
-    postsSkipped: skipped
+    postsSkipped: skipped + unimported
   };
 }
