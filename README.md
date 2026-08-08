@@ -89,6 +89,17 @@ which matters because each run parses posts through an LLM (see
 Frequency costs real money either way: every run triggers an Apify actor run per
 active group and one LLM call per candidate post.
 
+### Which groups a run reaches
+
+An Apify run takes roughly 28s even when it returns nothing, so a 50s request
+fits one group, occasionally two. Groups are therefore synced
+least-recently-first, ordered by `FacebookGroup.lastSyncedAt`, and each run
+reports `groupsNotAttempted` for the ones it could not reach.
+
+`lastSyncedAt` is stamped when the attempt *starts*, not when it succeeds — a
+group that always fails still rotates to the back instead of monopolising every
+run. With N groups, expect a full cycle every N runs.
+
 Images are copied into blob storage at import time, so listings keep their
 photos after Facebook's CDN URLs expire — set `BLOB_READ_WRITE_TOKEN` to enable
 it (see the environment table above).

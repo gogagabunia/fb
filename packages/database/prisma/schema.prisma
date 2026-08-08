@@ -55,6 +55,7 @@ model FacebookGroup {
   adminVerified   Boolean          @default(false) // True if scraper confirmed user is admin
   adminVerifiedAt DateTime?        // When admin status was last verified
   visibilityCheckedAt DateTime?    // When public/private visibility was last detected
+  lastSyncedAt    DateTime?        // Last sync ATTEMPT, set regardless of outcome
   keywords        String[]         // List of custom brand/product keywords to flag
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -65,8 +66,8 @@ model FacebookGroup {
 
   // Postgres does not index foreign keys automatically, and every read here
   // filters by owner or by isActive. Without these it is a sequential scan.
-  @@index([userId, createdAt])  // getFacebookGroups, dashboard "recent groups"
-  @@index([isActive])           // cron: every active group across all owners
+  @@index([userId, createdAt])       // getFacebookGroups, dashboard "recent groups"
+  @@index([isActive, lastSyncedAt])  // cron: least-recently-synced active group first
 }
 
 model ImportedPost {
