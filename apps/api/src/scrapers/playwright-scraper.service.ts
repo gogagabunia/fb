@@ -36,16 +36,17 @@ export class PlaywrightScraperService {
 
 
   /**
-   * Scrapes recent posts from a Facebook Group.
-   * @param opts.sinceDays  only posts newer than N days (default 30)
-   * @param opts.maxPosts   hard upper bound on posts (default 100)
+   * Scrapes the most recent posts from a Facebook Group.
+   * @param opts.sinceDays  only posts newer than N days; 0 for no date window
+   * @param opts.maxPosts   hard upper bound on posts
    * @param opts.cookiesJson decrypted per-owner FB cookie JSON (private groups)
+   * @param opts.timeoutMs  abort the Apify run after this long
    */
   async scrapeGroup(
     groupId: string,
     opts: { sinceDays?: number; maxPosts?: number; cookiesJson?: string | null; timeoutMs?: number } = {}
   ): Promise<{ title: string; text: string; images: string[]; author: string; id: string }[]> {
-    const { sinceDays = 30, maxPosts = 100, cookiesJson = null, timeoutMs } = opts;
+    const { sinceDays = 0, maxPosts = 5, cookiesJson = null, timeoutMs } = opts;
 
     const group = await this.prisma.facebookGroup.findUnique({
       where: { id: groupId }
@@ -122,7 +123,7 @@ export class PlaywrightScraperService {
 
     try {
       const result = await scrapeGroupWithBrowser(
-        { id: group.id, name: group.name, url: group.url, keywords: group.keywords },
+        { id: group.id, name: group.name, url: group.url },
         {
           maxPosts,
           cookiesJson,

@@ -49,7 +49,8 @@ Generate the secrets with `openssl rand -base64 48`.
 | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Moderation alerts log to stdout instead of sending. |
 | `CRON_SECRET` | Checked as `Authorization: Bearer …` on `/api/cron/scrape` in production. |
 | `NEXT_PUBLIC_APP_URL` | Defaults to `http://localhost:3000` in links and redirects. |
-| `SYNC_TEST_MODE` | `true` limits syncs to 5 posts with no date window. |
+| `SYNC_MAX_POSTS` | How many recent posts each sync pulls per group. Defaults to 5. |
+| `SYNC_SINCE_DAYS` | Date window in days; defaults to 0, meaning no window — just the most recent posts. |
 | `USE_MOCK_SCRAPER` | `true` returns canned posts when a scrape fails. |
 | `ALLOW_SIMULATED_CHECKOUT` | `true` grants promotions without payment. Development only — ignored when `NODE_ENV=production`. |
 
@@ -107,6 +108,20 @@ test → typecheck → build on every push to `main` and every PR.
 Database-backed flows are not covered by automated tests. To exercise them, use
 `.claude/skills/run-groupmarket` — it runs a real Postgres locally, seeds data,
 and drives the app with Playwright.
+
+## What reaches the moderation queue
+
+Every scraped post with any text is imported as `PENDING`. Nothing is filtered
+out before a human sees it.
+
+Two filters used to sit in front of the queue and both were removed: the AI's
+`isListing` verdict, which silently discarded any post it misjudged, and a
+hardcoded keyword list (`sell`, `price`, `car`…) on the browser scraper, which
+dropped listings phrased differently. The parser still runs — its output
+prefills the moderation form — but it no longer decides what gets imported.
+
+`FacebookGroup.keywords` is still collected by the connect form and stored, but
+nothing reads it any more.
 
 ## Known gaps
 
