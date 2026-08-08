@@ -268,6 +268,7 @@ export async function syncGroupById(
           images: await persistImages(post.images, imageKey),
           authorName: post.author,
           priceScraped: parsed.price || null,
+          parsedCategory: parsed.category || null,
           status: 'PENDING',
           groupId: group.id,
           userId: group.userId

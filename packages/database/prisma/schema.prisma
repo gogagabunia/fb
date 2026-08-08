@@ -83,6 +83,9 @@ model ImportedPost {
   authorName     String
   authorProfile  String?          // Link to author's FB profile
   priceScraped   Float?
+  // The AI parser's category guess, kept so the moderation form can pre-select
+  // the matching entry in the fixed category dropdown.
+  parsedCategory String?
   currency       String           @default("USD")
   status         PostStatus       @default(PENDING)
   rejectionReason String?

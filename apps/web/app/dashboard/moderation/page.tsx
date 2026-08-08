@@ -9,9 +9,10 @@ import {
   getDashboardStats,
   triggerScrapingAction,
   getFacebookGroups
-} from '../actions';
-import { getCurrentUser, logoutAction } from '../auth-actions';
-import Sidebar from '../components/sidebar';
+} from '../../actions';
+import { getCurrentUser, logoutAction } from '../../auth-actions';
+import Sidebar from '../../components/sidebar';
+import { CATEGORIES, FALLBACK_CATEGORY, matchCategoryGuess } from '../../lib/categories';
 
 interface ImportedPost {
   id: string;
@@ -21,6 +22,7 @@ interface ImportedPost {
   authorName: string;
   authorProfile: string | null;
   priceScraped: number | null;
+  parsedCategory: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   rejectionReason: string | null;
   scrapedAt: any;
@@ -49,7 +51,8 @@ export default function AdminPage() {
   // Modal States
   const [editPost, setEditPost] = useState<ImportedPost | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [editCategory, setEditCategory] = useState('Vehicles');
+  // Holds the fixed-list slug — the value approvePostAction validates.
+  const [editCategory, setEditCategory] = useState(FALLBACK_CATEGORY.slug);
   const [editPrice, setEditPrice] = useState(0);
   const [editDescription, setEditDescription] = useState('');
   const [editLocation, setEditLocation] = useState('Scottsdale, AZ');
@@ -159,7 +162,8 @@ export default function AdminPage() {
     const firstLine = post.rawText.split('\n')[0] || '';
     const guessedTitle = firstLine.length > 50 ? firstLine.substring(0, 47) + '...' : firstLine || `Listing from ${post.authorName}`;
     setEditTitle(guessedTitle);
-    setEditCategory('Vehicles'); // Default or parsed
+    // Pre-select the AI's guess where it maps onto the fixed list; Other otherwise.
+    setEditCategory(matchCategoryGuess(post.parsedCategory).slug);
     setEditPrice(post.priceScraped || 0);
     setEditDescription(post.rawText);
     setEditLocation('Scottsdale, AZ');
@@ -240,7 +244,7 @@ export default function AdminPage() {
 
       <div className="flex flex-col md:flex-row h-screen overflow-hidden">
         {/* Shared Sidebar */}
-        <Sidebar activePage="admin" user={user} onSync={handleSync} syncing={syncing} />
+        <Sidebar activePage="moderation" user={user} onSync={handleSync} syncing={syncing} />
 
         {/* Content Canvas */}
         <main className="flex-grow p-md md:p-xl overflow-y-auto max-w-container-max h-full">
@@ -556,10 +560,9 @@ export default function AdminPage() {
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="w-full p-md bg-surface-container-low border border-outline-variant rounded-lg text-body-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                   >
-                    <option value="Vehicles">Vehicles</option>
-                    <option value="Electronics">Electronics</option>
-                    <option value="Real Estate">Real Estate</option>
-                    <option value="Other">Other</option>
+                    {CATEGORIES.map(c => (
+                      <option key={c.slug} value={c.slug}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

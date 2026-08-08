@@ -57,6 +57,10 @@ ALTER TABLE "User"
 -- categoryId (FK to Category) is the single source of truth now.
 ALTER TABLE "Listing" DROP COLUMN IF EXISTS "category";
 
+-- ── 4. Store the AI parser's category guess on imported posts ───────────────
+-- The moderation form pre-selects the fixed-list dropdown from it.
+ALTER TABLE "ImportedPost" ADD COLUMN IF NOT EXISTS "parsedCategory" TEXT;
+
 COMMIT;
 
 -- Verify:
