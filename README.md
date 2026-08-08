@@ -134,10 +134,32 @@ telemetry:
 | `usedSession` | `owner`, `shared` or `none` |
 | `groupUrl` | the URL actually scraped — catches a group saved with a bad link |
 | `postsReturnedByScraper` | raw rows from the scraper, before any filtering |
+| `apify` | the run's id, final status, dataset size, and log tail |
 | `hint` | plain-language reading when the count is zero |
 
 Group URLs should look like `https://www.facebook.com/groups/<id>`. A profile
 link or a search URL returns nothing with no error.
+
+### Reading the `apify` block
+
+The scrape used to call `run-sync-get-dataset-items`, which returns the dataset
+rows and nothing else — so a run that failed, timed out, or hit a login wall was
+indistinguishable from a group that genuinely had no posts. All three arrived as
+`[]` and were reported as a success with zero posts.
+
+The run is now started explicitly and waited on, which costs one extra request
+and gives back what actually happened:
+
+- **status not `SUCCEEDED`** — the sync fails with the run's status and status
+  message rather than reporting an empty success. A run still going when the
+  budget runs out is aborted, so it stops billing.
+- **`SUCCEEDED` with `itemCount: 0`** — the actor ran fine and found nothing.
+  `logTail` carries the end of the actor's own log, which is the only place the
+  reason appears: a login redirect, a blocked proxy, or an empty group.
+
+Session cookies are stripped from `logTail` before it is stored or logged —
+actors echo their input on startup, and this text reaches cron telemetry and CI
+logs.
 
 Owners connect a session from `/connect-facebook`, which serves the browser
 extension and its install steps.

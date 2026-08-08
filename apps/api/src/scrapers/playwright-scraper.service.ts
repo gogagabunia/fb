@@ -1,4 +1,10 @@
 import { PrismaClient } from 'database';
+import {
+  APIFY_LOG_TAIL_CHARS,
+  APIFY_MAX_WAIT_SECONDS,
+  apifyWaitSeconds,
+  redactApifyLog
+} from './apify-log';
 
 // Reuse one PrismaClient across invocations — a per-instance client exhausts the
 // connection pool when several syncs run in the same process.
@@ -16,6 +22,19 @@ class Logger {
   error(msg: string) { console.error(`[${this.name}] ${msg}`); }
 }
 
+const APIFY_ACTOR_ID = 'whoareyouanas~facebook-group-scraper';
+
+/** What the last Apify run reported, beyond the rows it produced. */
+export interface ApifyRunReport {
+  id: string;
+  status: string;
+  statusMessage?: string | null;
+  /** Rows in the run's dataset, before any mapping or filtering of ours. */
+  itemCount: number;
+  /** Tail of the actor's own log, fetched only when it produced no rows. */
+  logTail?: string;
+}
+
 export class PlaywrightScraperService {
   private readonly logger = new Logger(PlaywrightScraperService.name);
   private readonly prisma = prismaClient;
@@ -25,6 +44,17 @@ export class PlaywrightScraperService {
    * true import count back once parsing is done. Null until a scrape runs.
    */
   public lastScrapingLogId: string | null = null;
+
+  /**
+   * What the last Apify run reported. Null until an Apify scrape runs.
+   *
+   * The sync endpoint returns the dataset rows and nothing else, so a run that
+   * failed, timed out, or hit a Facebook login wall was indistinguishable from
+   * a group that genuinely had no posts — all three arrived as `[]`. Starting
+   * the run explicitly costs one extra request and buys the run status, its
+   * status message, and its log.
+   */
+  public lastApifyRun: ApifyRunReport | null = null;
 
   /**
    * When true, scrape failures return canned mock posts instead of throwing.
@@ -224,23 +254,95 @@ export class PlaywrightScraperService {
       }
     }
 
-    // run-sync-get-dataset-items blocks until the actor finishes, with no
-    // server-side cap. Unbounded, it swallowed the caller's whole budget — the
-    // cron route died at 60s with FUNCTION_INVOCATION_TIMEOUT before parsing
-    // anything.
+    // An Apify run is unbounded from our side, and left that way it swallowed
+    // the caller's whole budget — the cron route died at 60s with
+    // FUNCTION_INVOCATION_TIMEOUT before parsing anything.
     const controller = new AbortController();
     const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
-    let response: Response;
+    // Values we sent, so they can be scrubbed back out of the actor's log.
+    const secrets = (input.cookies || []).map((c: any) => String(c.value)).filter(Boolean);
+
     try {
-      response = await fetch(`https://api.apify.com/v2/acts/whoareyouanas~facebook-group-scraper/run-sync-get-dataset-items?token=${token}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(input),
-        signal: controller.signal,
-      });
+      // Start the run and wait for it, rather than using
+      // run-sync-get-dataset-items. That endpoint hands back the dataset rows
+      // and nothing else, so a run that failed or hit a login wall looked
+      // exactly like an empty group. Hold time back for reading the results.
+      const waitSeconds = apifyWaitSeconds(timeoutMs ?? APIFY_MAX_WAIT_SECONDS * 1000);
+
+      const runResponse = await fetch(
+        `https://api.apify.com/v2/acts/${APIFY_ACTOR_ID}/runs?token=${token}&waitForFinish=${waitSeconds}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+          signal: controller.signal
+        }
+      );
+
+      if (!runResponse.ok) {
+        // A 400 here means the actor rejected our input — worth saying out
+        // loud, because the field names built above were never verified
+        // against the actor's published schema.
+        const errorText = await runResponse.text();
+        throw new Error(`Apify API returned error status ${runResponse.status}: ${errorText}`);
+      }
+
+      const run = (await runResponse.json())?.data;
+      if (!run?.id) {
+        throw new Error('Apify accepted the request but returned no run object.');
+      }
+
+      this.lastApifyRun = {
+        id: run.id,
+        status: String(run.status),
+        statusMessage: run.statusMessage ?? null,
+        itemCount: 0
+      };
+
+      if (run.status !== 'SUCCEEDED') {
+        // Still going means we ran out of budget, not that the actor is
+        // broken. Abort it — otherwise we pay for a run nobody ever reads.
+        if (run.status === 'RUNNING' || run.status === 'READY') {
+          await this.abortApifyRun(run.id, token);
+          throw new Error(
+            `Apify run ${run.id} did not finish within ${waitSeconds}s (status ${run.status}); aborted.`
+          );
+        }
+        throw new Error(
+          `Apify run ${run.id} ended as ${run.status}` +
+            (run.statusMessage ? `: ${run.statusMessage}` : '')
+        );
+      }
+
+      const itemsResponse = await fetch(
+        `https://api.apify.com/v2/datasets/${run.defaultDatasetId}/items?token=${token}`,
+        { signal: controller.signal }
+      );
+      if (!itemsResponse.ok) {
+        throw new Error(
+          `Apify run ${run.id} succeeded but its dataset could not be read (HTTP ${itemsResponse.status}).`
+        );
+      }
+
+      const items = await itemsResponse.json();
+      if (!Array.isArray(items)) {
+        throw new Error('Apify API response is not an array of dataset items');
+      }
+      this.lastApifyRun.itemCount = items.length;
+      this.logger.log(`Apify run ${run.id} succeeded. Retrieved ${items.length} items from dataset.`);
+
+      if (items.length === 0) {
+        // The actor ran to completion and still produced nothing. Its own log
+        // is the only thing that can say why — a login wall, a blocked proxy,
+        // or a group that really is empty all end here.
+        this.lastApifyRun.logTail = await this.fetchApifyLogTail(run.id, token, secrets, controller.signal);
+        this.logger.warn(
+          `Apify run ${run.id} succeeded with 0 items. Actor log tail:\n${this.lastApifyRun.logTail ?? '(log unavailable)'}`
+        );
+      }
+
+      return this.mapApifyItems(items);
     } catch (err: any) {
       if (err?.name === 'AbortError') {
         throw new Error(`Apify run exceeded the ${timeoutMs}ms budget for this sync.`);
@@ -249,18 +351,42 @@ export class PlaywrightScraperService {
     } finally {
       if (timer) clearTimeout(timer);
     }
+  }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Apify API returned error status ${response.status}: ${errorText}`);
+  /** Stop a run we've given up waiting for, so it stops costing money. */
+  private async abortApifyRun(runId: string, token: string): Promise<void> {
+    try {
+      await fetch(`https://api.apify.com/v2/actor-runs/${runId}/abort?token=${token}`, { method: 'POST' });
+    } catch (err: any) {
+      this.logger.warn(`Could not abort Apify run ${runId}: ${err?.message || err}`);
     }
+  }
 
-    const items = await response.json();
-    if (!Array.isArray(items)) {
-      throw new Error('Apify API response is not an array of dataset items');
+  /**
+   * Tail of an actor run's log, with the session cookies we sent scrubbed out.
+   *
+   * Actors routinely echo their input on startup, and this text ends up in cron
+   * telemetry and CI logs — so the values are removed before it goes anywhere.
+   */
+  private async fetchApifyLogTail(
+    runId: string,
+    token: string,
+    secrets: string[],
+    signal: AbortSignal
+  ): Promise<string | undefined> {
+    try {
+      const response = await fetch(`https://api.apify.com/v2/logs/${runId}?token=${token}`, { signal });
+      if (!response.ok) return undefined;
+
+      const tail = (await response.text()).slice(-APIFY_LOG_TAIL_CHARS).trim();
+      return redactApifyLog(tail, secrets);
+    } catch {
+      return undefined; // diagnostics must never break the sync
     }
-    this.logger.log(`Apify completed successfully. Retrieved ${items.length} items from dataset.`);
+  }
 
+  /** Map the actor's dataset rows onto our standard post structure. */
+  private mapApifyItems(items: any[]): { title: string; text: string; images: string[]; author: string; id: string }[] {
     // Check if Apify returned any error items (e.g. content not available, login wall, etc.)
     const errorItem = items.find((item: any) => item.error);
     if (errorItem) {

@@ -2,7 +2,7 @@ import { prisma } from './prisma';
 import { decrypt } from './crypto';
 import { persistImages } from './image-store';
 import { mapWithConcurrency } from './concurrency';
-import { PlaywrightScraperService } from '../../../api/src/scrapers/playwright-scraper.service';
+import { PlaywrightScraperService, type ApifyRunReport } from '../../../api/src/scrapers/playwright-scraper.service';
 import { OpenAIParserService, type ExtractedListing } from '../../../api/src/parser/openai-parser.service';
 
 export interface SyncResult {
@@ -28,6 +28,12 @@ export interface SyncResult {
     groupUrl: string;
     /** Rows the scraper returned, before any filtering. */
     postsReturnedByScraper: number;
+    /**
+     * What Apify itself reported: run id, final status, raw dataset size, and —
+     * when it produced nothing — the tail of the actor's own log. Absent when
+     * the run never started or the browser fallback was used.
+     */
+    apify?: ApifyRunReport;
     /** Plain-language reading of the above, for whoever sees the telemetry. */
     hint?: string;
   };
@@ -152,6 +158,7 @@ export async function syncGroupById(
           usedSession,
           groupUrl: group.url,
           postsReturnedByScraper: 0,
+          apify: scraper.lastApifyRun ?? undefined,
           hint: hadOwnerSession
             ? 'The stored session was rejected — it has expired or was invalidated by Facebook.'
             : 'The shared session cannot read this group. It is probably not a member.'
@@ -161,7 +168,12 @@ export async function syncGroupById(
     return {
       success: false,
       error: msg,
-      diagnostics: { usedSession, groupUrl: group.url, postsReturnedByScraper: 0 }
+      diagnostics: {
+        usedSession,
+        groupUrl: group.url,
+        postsReturnedByScraper: 0,
+        apify: scraper.lastApifyRun ?? undefined
+      }
     };
   }
 
@@ -302,6 +314,7 @@ export async function syncGroupById(
       usedSession,
       groupUrl: group.url,
       postsReturnedByScraper: rawPosts.length,
+      apify: scraper.lastApifyRun ?? undefined,
       hint
     }
   };
