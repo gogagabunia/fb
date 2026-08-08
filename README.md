@@ -163,6 +163,12 @@ as `proxyUrl`; any residential proxy works, and Apify's own looks like:
 http://groups-RESIDENTIAL:<APIFY_PROXY_PASSWORD>@proxy.apify.com:8000
 ```
 
+Set the **value** to the URL alone. Pasting the whole `APIFY_PROXY_URL = …`
+line into the value box failed every run with `Expected property string values
+to be a URL` — that prefix, and surrounding quotes, are now stripped, but a
+value that still isn't an `http(s)` URL stops the sync before any actor run
+starts rather than failing once per group.
+
 Residential proxy is billed per GB and is not on the free plan. Until the
 variable is set, every sync logs a warning up front and any empty result says
 so in its `hint` — the missing proxy is reported ahead of the session, because
