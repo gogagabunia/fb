@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "prisma generate --schema=../../packages/database/prisma/schema.prisma && next build",
-    "start": "next start"
+    "build": "node ../../scripts/build-extension-zip.mjs && prisma generate --schema=../../packages/database/prisma/schema.prisma && next build",
+    "start": "next start",
+    "predev": "node ../../scripts/build-extension-zip.mjs"
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.0",
@@ -27,6 +28,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "adm-zip": "^0.6.0",
     "autoprefixer": "^10.0.0",
     "postcss": "^8.0.0",
     "prisma": "^5.0.0",

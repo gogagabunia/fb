@@ -93,7 +93,10 @@ export async function POST(req: Request) {
         // Posts left unparsed because the per-group time budget ran out. Never
         // let truncation look like "nothing more to import".
         postsUnparsed: result.postsSkipped || 0,
-        error: result.error || null
+        error: result.error || null,
+        // Surfaced so a zero-post run explains itself in the telemetry rather
+        // than needing someone to go and reproduce it.
+        diagnostics: result.diagnostics || null
       });
     }
 

@@ -97,10 +97,27 @@ export default function FacebookConnect() {
 
       {open && (
         <div style={{ marginTop: 16, borderTop: '1px solid #eee', paddingTop: 16 }}>
+          {/* The extension is the path most people should take; pasting cookies by
+              hand is the fallback for when it can't be installed. */}
+          <div style={{ background: '#f1f6ff', border: '1px solid #d3e2fb', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+            <p style={{ fontSize: 13, color: '#1a3d6d', margin: 0, fontWeight: 600 }}>
+              Easier: use the browser extension
+            </p>
+            <p style={{ fontSize: 12, color: '#3c5a80', margin: '4px 0 8px' }}>
+              One click, no copying. Takes about a minute to set up.
+            </p>
+            <a
+              href="/connect-facebook"
+              style={{ fontSize: 13, color: '#1877f2', fontWeight: 600, textDecoration: 'underline' }}
+            >
+              Download and install instructions →
+            </a>
+          </div>
+
           <p style={{ fontSize: 13, color: '#3c4043', margin: '0 0 8px' }}>
-            Paste your Facebook session cookies (JSON export from a cookie-export
-            extension while logged into facebook.com). This is stored encrypted and
-            only used to read your groups.
+            Or paste your Facebook session cookies by hand (JSON export from a
+            cookie-export extension while logged into facebook.com). Stored
+            encrypted and only used to read your groups.
           </p>
           <textarea
             value={cookieText}

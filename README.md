@@ -120,6 +120,28 @@ Database-backed flows are not covered by automated tests. To exercise them, use
 `.claude/skills/run-groupmarket` — it runs a real Postgres locally, seeds data,
 and drives the app with Playwright.
 
+## Diagnosing an empty sync
+
+A sync needs a Facebook session — the Apify actor cannot read *any* group
+without one, public or private. If none is attached the sync refuses with
+`needsFacebook` rather than scraping and quietly returning nothing.
+
+Every sync result carries a `diagnostics` block, surfaced in the cron's
+telemetry:
+
+| Field | Tells you |
+| --- | --- |
+| `usedSession` | `owner`, `shared` or `none` |
+| `groupUrl` | the URL actually scraped — catches a group saved with a bad link |
+| `postsReturnedByScraper` | raw rows from the scraper, before any filtering |
+| `hint` | plain-language reading when the count is zero |
+
+Group URLs should look like `https://www.facebook.com/groups/<id>`. A profile
+link or a search URL returns nothing with no error.
+
+Owners connect a session from `/connect-facebook`, which serves the browser
+extension and its install steps.
+
 ## What reaches the moderation queue
 
 Every scraped post with any text is imported as `PENDING`. Nothing is filtered
