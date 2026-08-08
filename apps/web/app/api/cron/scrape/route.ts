@@ -93,6 +93,11 @@ export async function POST(req: Request) {
         // Posts left unparsed because the per-group time budget ran out. Never
         // let truncation look like "nothing more to import".
         postsUnparsed: result.postsSkipped || 0,
+        // Posts the run deliberately did not import. Without these a run that
+        // scrapes 5 and imports 0 looks broken when it is working exactly as
+        // configured.
+        postsDuplicate: result.postsDuplicate || 0,
+        postsWithoutImages: result.postsWithoutImages || 0,
         error: result.error || null,
         // Surfaced so a zero-post run explains itself in the telemetry rather
         // than needing someone to go and reproduce it.

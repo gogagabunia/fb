@@ -5,12 +5,17 @@ import { mapWithConcurrency } from './concurrency';
 import { PlaywrightScraperService, type ApifyRunReport } from '../../../api/src/scrapers/playwright-scraper.service';
 import { OpenAIParserService, type ExtractedListing } from '../../../api/src/parser/openai-parser.service';
 import { emptyScrapeHint } from './sync-diagnostics';
+import { requireImagesEnabled, selectPosts } from './post-filter';
 
 export interface SyncResult {
   success: boolean;
   postsFound?: number;
   listingsImported?: number;
   postsSkipped?: number;
+  /** Already in the queue from an earlier sync — not parsed, not re-imported. */
+  postsDuplicate?: number;
+  /** Dropped by the require-images rule, before parsing. */
+  postsWithoutImages?: number;
   needsFacebook?: boolean;
   error?: string;
 
@@ -180,9 +185,34 @@ export async function syncGroupById(
 
   const { sendAdminModerationAlert } = require('./email');
 
-  // Only genuinely empty posts are dropped — with no text there is nothing for
-  // the parser to read and nothing for a human to judge in the queue.
-  const candidates = rawPosts.filter(post => post.text && post.text.trim().length > 0);
+  // Which posts are already in the queue. One query for the whole batch, run
+  // *before* parsing: the duplicate check used to sit after it, so the AI was
+  // called on every scraped post on every sync and the answer was thrown away
+  // a few lines later.
+  const alreadyImported = new Set<string>(
+    rawPosts.length === 0
+      ? []
+      : (
+          await prisma.importedPost.findMany({
+            where: { fbPostId: { in: rawPosts.map(post => post.id) } },
+            select: { fbPostId: true }
+          })
+        ).map(row => row.fbPostId)
+  );
+
+  const selection = selectPosts(rawPosts, {
+    alreadyImported,
+    requireImages: requireImagesEnabled()
+  });
+  const candidates = selection.toImport;
+
+  if (selection.skippedNoImages > 0 || selection.skippedDuplicate > 0) {
+    console.log(
+      `[Sync] "${group.name}": ${rawPosts.length} scraped, ${candidates.length} new — ` +
+        `${selection.skippedDuplicate} already imported, ${selection.skippedNoImages} without images, ` +
+        `${selection.skippedNoText} without text.`
+    );
+  }
 
   const parseDeadline = Math.min(Date.now() + PARSE_BUDGET_MS, deadline - WRAP_UP_RESERVE_MS);
   let skipped = 0;
@@ -210,6 +240,7 @@ export async function syncGroupById(
 
   let newCount = 0;
   let unimported = 0;
+  let duplicates = selection.skippedDuplicate;
 
   for (const { post, parsed } of listings) {
     // Importing copies images into blob storage, which is another network round
@@ -220,49 +251,35 @@ export async function syncGroupById(
       continue;
     }
 
-    const existing = await prisma.importedPost.findUnique({
-      where: { fbPostId: post.id },
-      select: { id: true, images: true }
-    });
-
     // Storage key derived from the post identity so a re-sync lands in the same
     // place. The id can be a full permalink, so strip it to path-safe chars.
     const imageKey = `posts/${group.id}/${post.id.replace(/[^a-zA-Z0-9]+/g, '-').slice(-64)}`;
 
-    if (existing) {
-      // Once images are stored, keep them: `post.images` on a re-scrape is a
-      // fresh set of expiring Facebook CDN URLs, and writing those back would
-      // undo the copy we already made.
-      const alreadyStored = existing.images.some(url => url.includes('.blob.vercel-storage.com'));
-
-      // Refresh the scraped content, but never touch `status`. This was an
-      // upsert that always wrote status: 'PENDING', so every re-sync dragged
-      // already-approved and already-rejected posts back into the moderation
-      // queue — the same posts reappearing after each run.
-      await prisma.importedPost.update({
-        where: { id: existing.id },
+    // Everything here is new — duplicates were filtered out before parsing.
+    // A concurrent sync of the same group can still land the same post first,
+    // so the unique constraint on fbPostId is the real guard; treat that as the
+    // duplicate it is rather than failing the whole group.
+    let imported;
+    try {
+      imported = await prisma.importedPost.create({
         data: {
+          fbPostId: post.id,
           rawText: post.text,
-          images: alreadyStored ? existing.images : await persistImages(post.images, imageKey),
+          images: await persistImages(post.images, imageKey),
           authorName: post.author,
-          priceScraped: parsed.price || null
+          priceScraped: parsed.price || null,
+          status: 'PENDING',
+          groupId: group.id,
+          userId: group.userId
         }
       });
-      continue; // already seen — no second moderation alert
-    }
-
-    const imported = await prisma.importedPost.create({
-      data: {
-        fbPostId: post.id,
-        rawText: post.text,
-        images: await persistImages(post.images, imageKey),
-        authorName: post.author,
-        priceScraped: parsed.price || null,
-        status: 'PENDING',
-        groupId: group.id,
-        userId: group.userId
+    } catch (createErr: any) {
+      if (createErr?.code === 'P2002') {
+        duplicates++;
+        continue;
       }
-    });
+      throw createErr;
+    }
     newCount++;
 
     // Dispatch background email alert (non-blocking)
@@ -309,6 +326,8 @@ export async function syncGroupById(
     postsFound: rawPosts.length,
     listingsImported: newCount,
     postsSkipped: skipped + unimported,
+    postsDuplicate: duplicates,
+    postsWithoutImages: selection.skippedNoImages,
     diagnostics: {
       usedSession,
       groupUrl: group.url,

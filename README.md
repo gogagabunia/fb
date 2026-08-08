@@ -52,6 +52,7 @@ Generate the secrets with `openssl rand -base64 48`.
 | `NEXT_PUBLIC_APP_URL` | Defaults to `http://localhost:3000` in links and redirects. |
 | `SYNC_MAX_POSTS` | How many recent posts each sync pulls per group. Defaults to 5. |
 | `SYNC_SINCE_DAYS` | Date window in days; defaults to 0, meaning no window — just the most recent posts. |
+| `SYNC_REQUIRE_IMAGES` | `false` imports text-only posts too. On by default, so a post with no photo never reaches the queue. |
 | `USE_MOCK_SCRAPER` | `true` returns canned posts when a scrape fails. |
 | `ALLOW_SIMULATED_CHECKOUT` | `true` grants promotions without payment. Development only — ignored when `NODE_ENV=production`. |
 
@@ -200,11 +201,28 @@ extension and its install steps.
 
 ## What reaches the moderation queue
 
-Every scraped post with any text is imported as `PENDING`. Nothing is filtered
-out before a human sees it.
+Three rules run in order, before the parser, and each one is counted so a run
+that imports nothing can say which rule dropped what:
 
-Two filters used to sit in front of the queue and both were removed: the AI's
-`isListing` verdict, which silently discarded any post it misjudged, and a
+| Rule | Reported as |
+| --- | --- |
+| Has text at all | `postsSkippedNoText` — nothing to parse or judge |
+| Has at least one image | `postsWithoutImages` |
+| Not already imported | `postsDuplicate` |
+
+Anything surviving all three is imported as `PENDING`.
+
+**Duplicates are dropped before parsing, not after.** The check used to sit
+after the AI call, so every already-seen post was re-parsed on every sync and
+the result discarded a few lines later — with 5 posts per group, 5 groups and
+4 syncs a day, nearly every one of those calls was waste.
+
+**The image rule discards real listings.** A text-only "selling my sofa, message
+me" is a genuine ad that will never reach the queue. Set
+`SYNC_REQUIRE_IMAGES=false` to take everything with text instead.
+
+Two *other* filters used to sit in front of the queue and both were removed: the
+AI's `isListing` verdict, which silently discarded any post it misjudged, and a
 hardcoded keyword list (`sell`, `price`, `car`…) on the browser scraper, which
 dropped listings phrased differently. The parser still runs — its output
 prefills the moderation form — but it no longer decides what gets imported.
