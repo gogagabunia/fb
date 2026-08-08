@@ -1,0 +1,43 @@
+name: Scrape groups
+
+# Vercel's own cron is capped at one run per day on the Hobby plan — it rejects
+# the deployment outright for anything more frequent, so vercel.json stays on
+# `0 6 * * *`. This workflow drives the same endpoint on the cadence we actually
+# want, using the CRON_SECRET the route already checks.
+#
+# Requires two repository secrets. Without them the job exits without calling
+# anything, so a fork or an unconfigured repo does not fail on every schedule:
+#   APP_URL      e.g. https://fb-two-rho.vercel.app
+#   CRON_SECRET  the same value set in the Vercel project
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sync
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL or CRON_SECRET not configured — skipping."
+            exit 0
+          fi
+
+          # --max-time guards against a hung scrape holding the runner open.
+          status=$(curl -sS -o response.json -w '%{http_code}' --max-time 300 \
+            -X POST "$APP_URL/api/cron/scrape" \
+            -H "Authorization: Bearer $CRON_SECRET")
+
+          echo "HTTP $status"
+          cat response.json
+
+          # A non-2xx is a real failure worth a red run, not something to swallow.
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Scrape endpoint returned HTTP $status"
+            exit 1
+          fi

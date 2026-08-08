@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The Playwright browser download is skipped: nothing here drives a
+      # browser, and the scraper's browser path cannot run on Vercel anyway.
+      - name: Install dependencies
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+
+      # Needed before typecheck and build — the app imports the generated client.
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Validate Prisma schema
+        run: npx prisma validate --schema=packages/database/prisma/schema.prisma
+        env:
+          # validate resolves env() in the datasource block; these are never
+          # connected to, they only have to parse.
+          POSTGRES_PRISMA_URL: postgresql://user:pass@localhost:5432/db
+          POSTGRES_URL_NON_POOLING: postgresql://user:pass@localhost:5432/db
+
+      - name: Test
+        run: npm test
+
+      # Run from the workspace so it uses the app's own TypeScript. The root
+      # devDependency is a newer major that rejects this tsconfig's options.
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.json
+        working-directory: apps/web
+
+      - name: Build
+        run: npm run build
+        env:
+          # Secret resolution is lazy, so a build needs no real values — but
+          # NODE_ENV is production here and the guards must see something.
+          JWT_SECRET: ci-placeholder-not-a-real-secret
+          ENCRYPTION_KEY: ci-placeholder-not-a-real-secret
+          POSTGRES_PRISMA_URL: postgresql://user:pass@localhost:5432/db
+          POSTGRES_URL_NON_POOLING: postgresql://user:pass@localhost:5432/db

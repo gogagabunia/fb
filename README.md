@@ -11,8 +11,6 @@ and publishes approved items as marketplace listings after human moderation.
 | `apps/api/src` | Scraper + AI parser services, imported directly by `apps/web` |
 | `packages/database` | Prisma schema and generated client |
 | `browser-extension` | Chrome MV3 extension for one-click Facebook connect |
-| `apps/mobile` | Expo client (unmaintained; points at `localhost:3000`) |
-| `*.html`, `vite.config.js` | Pre-Next static prototype, superseded by `apps/web` |
 
 ## Setup
 
@@ -47,6 +45,7 @@ Generate the secrets with `openssl rand -base64 48`.
 | `GEMINI_API_KEY` / `GROQ_API_KEY` / `OPENAI_API_KEY` | Parser falls through Gemini → Groq → OpenAI → local regex heuristics. |
 | `STRIPE_SECRET_KEY` | Listing promotion returns 503 (`Payments are not configured`). |
 | `STRIPE_WEBHOOK_SECRET` | Required alongside the Stripe key — promotions are applied by the webhook, not at checkout. |
+| `BLOB_READ_WRITE_TOKEN` | Listing images keep pointing at Facebook CDN URLs, which expire — published listings lose their photos after a few days. Set it (Vercel → Storage → Blob) to copy images into permanent storage at import. |
 | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Moderation alerts log to stdout instead of sending. |
 | `CRON_SECRET` | Checked as `Authorization: Bearer …` on `/api/cron/scrape` in production. |
 | `NEXT_PUBLIC_APP_URL` | Defaults to `http://localhost:3000` in links and redirects. |
@@ -65,15 +64,56 @@ read via `featuredUntil`.
 ## Deployment
 
 Deployed on Vercel. Both `vercel.json` (repo root) and `apps/web/vercel.json`
-carry the same build command and the daily `/api/cron/scrape` schedule, so the
-cron registers whichever directory the Vercel project is rooted at. Keep them in
-sync when changing either.
+carry the same build command and the `/api/cron/scrape` schedule, so the cron
+registers whichever directory the Vercel project is rooted at. Keep them in sync
+when changing either.
+
+### Scrape frequency
+
+`vercel.json` is on `0 6 * * *` — once a day — and must stay there while the
+project is on the Hobby plan. Vercel does not quietly downgrade a more frequent
+expression: it **rejects the deployment**, with
+`Hobby accounts are limited to daily cron jobs`.
+
+To sync more often without upgrading, `.github/workflows/scrape.yml` calls
+`POST /api/cron/scrape` every six hours with the same `CRON_SECRET` the route
+already checks. It needs two repository secrets, `APP_URL` and `CRON_SECRET`,
+and skips silently when either is missing. On Pro, raise the `vercel.json`
+schedule instead and disable that workflow.
+
+The route sets `maxDuration = 60`, the Hobby ceiling; on Pro it can be raised,
+which matters because each run parses posts through an LLM (see
+`PARSE_BUDGET_MS` in `app/lib/sync.ts`, currently 35s per group).
+
+Frequency costs real money either way: every run triggers an Apify actor run per
+active group and one LLM call per candidate post.
+
+Images are copied into blob storage at import time, so listings keep their
+photos after Facebook's CDN URLs expire — set `BLOB_READ_WRITE_TOKEN` to enable
+it (see the environment table above).
+
+## Tests
+
+```bash
+npm test          # vitest, once
+npm run test:watch
+```
+
+Covers the pure logic: model-output validation, promotion expiry, the bounded
+parser concurrency, HTML escaping, and image storage fallbacks. CI
+(`.github/workflows/ci.yml`) runs install → prisma generate → schema validate →
+test → typecheck → build on every push to `main` and every PR.
+
+Database-backed flows are not covered by automated tests. To exercise them, use
+`.claude/skills/run-groupmarket` — it runs a real Postgres locally, seeds data,
+and drives the app with Playwright.
 
 ## Known gaps
 
-- No test suite and no CI.
-- `apps/web/next.config.mjs` sets `ignoreBuildErrors` and `ignoreDuringBuilds`,
-  so TypeScript and ESLint failures do not block a deploy.
+- No automated coverage of the database-backed paths (moderation, sync,
+  checkout) — only the pure logic above.
+- ESLint is not configured, so `ignoreDuringBuilds` stays on in
+  `next.config.mjs`. TypeScript errors *do* block the build.
 - The login rate limiter (`app/lib/rate-limiter.ts`) is in-process, so on
   serverless it limits per instance rather than per account.
 - Analytics event recording is unauthenticated by design (visitors are

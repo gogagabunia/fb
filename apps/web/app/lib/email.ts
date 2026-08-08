@@ -12,7 +12,7 @@ interface ModerationDetails {
  * Everything here originates from a scraped Facebook post, i.e. from whoever
  * wrote that post — it must never be treated as markup.
  */
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return String(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
