@@ -70,17 +70,23 @@ when changing either.
 
 ### Scrape frequency
 
-The schedule is `0 */6 * * *` — every six hours.
+`vercel.json` is on `0 6 * * *` — once a day — and must stay there while the
+project is on the Hobby plan. Vercel does not quietly downgrade a more frequent
+expression: it **rejects the deployment**, with
+`Hobby accounts are limited to daily cron jobs`.
 
-**On the Hobby plan Vercel runs cron jobs once per day regardless of the
-expression**, so this only takes effect on Pro. The route also sets
-`maxDuration = 60`, the Hobby ceiling; on Pro it can be raised, which matters
-because each run parses posts through an LLM (see `PARSE_BUDGET_MS` in
-`app/lib/sync.ts`, currently 35s per group).
+To sync more often without upgrading, `.github/workflows/scrape.yml` calls
+`POST /api/cron/scrape` every six hours with the same `CRON_SECRET` the route
+already checks. It needs two repository secrets, `APP_URL` and `CRON_SECRET`,
+and skips silently when either is missing. On Pro, raise the `vercel.json`
+schedule instead and disable that workflow.
 
-Raising frequency costs real money: every run triggers an Apify actor run per
-active group and one LLM call per candidate post. Weigh that before going below
-six hours.
+The route sets `maxDuration = 60`, the Hobby ceiling; on Pro it can be raised,
+which matters because each run parses posts through an LLM (see
+`PARSE_BUDGET_MS` in `app/lib/sync.ts`, currently 35s per group).
+
+Frequency costs real money either way: every run triggers an Apify actor run per
+active group and one LLM call per candidate post.
 
 Images are copied into blob storage at import time, so listings keep their
 photos after Facebook's CDN URLs expire — set `BLOB_READ_WRITE_TOKEN` to enable
