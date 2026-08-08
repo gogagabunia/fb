@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword, createSession, destroySession, getSession
 import { redirect } from 'next/navigation';
 import { authRateLimiter } from './lib/rate-limiter';
 import { prisma } from './lib/prisma';
+import { resolveRegistrationRole } from './lib/registration-role';
 
 /**
  * Register a new user with email and password
@@ -47,13 +48,19 @@ export async function registerAction(formData: FormData) {
   // Hash password and create user
   const passwordHash = await hashPassword(password);
 
+  // The form's choice, degraded to BUYER for anything unexpected; ADMIN_EMAIL
+  // overrides both. This line used to read `role: 'ADMIN'` with the comment
+  // "All users are admins by default for this platform" — every registration
+  // was an admin.
+  const role = resolveRegistrationRole(formData.get('role') as string | null, email);
+
   const user = await prisma.user.create({
     data: {
       email: email.toLowerCase().trim(),
       passwordHash,
       firstName: firstName.trim(),
       lastName: lastName?.trim() || null,
-      role: 'ADMIN', // All users are admins by default for this platform
+      role,
     },
   });
 
