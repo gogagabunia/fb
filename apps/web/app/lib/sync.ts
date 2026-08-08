@@ -12,6 +12,25 @@ export interface SyncResult {
   postsSkipped?: number;
   needsFacebook?: boolean;
   error?: string;
+
+  /**
+   * Why a sync returned what it did.
+   *
+   * A run reporting `success: true, postsFound: 0` used to be unanswerable: the
+   * session used, the URL scraped and Apify's raw reply were all discarded, so
+   * an empty result looked identical whether the session was missing, the
+   * account wasn't a member, or the URL was wrong.
+   */
+  diagnostics?: {
+    /** Which Facebook session was sent, if any. */
+    usedSession: 'owner' | 'shared' | 'none';
+    /** The URL actually handed to the scraper — catches badly saved groups. */
+    groupUrl: string;
+    /** Rows the scraper returned, before any filtering. */
+    postsReturnedByScraper: number;
+    /** Plain-language reading of the above, for whoever sees the telemetry. */
+    hint?: string;
+  };
 }
 
 /** How many posts to run through the AI parser at once. */
@@ -60,7 +79,7 @@ export async function syncGroupById(
   // the Apify actor needs a logged-in session to read ANY group):
   //   1. the owner's own connected session (their account is a member)
   //   2. the shared global FB_COOKIES fallback
-  //   3. if neither exists and the group is private → prompt the owner to connect
+  //   3. if neither exists → prompt the owner to connect
   let cookiesJson: string | null = null;
   if (group.user?.fbSessionStatus === 'ACTIVE' && group.user?.fbSessionCookies) {
     try {
@@ -69,10 +88,28 @@ export async function syncGroupById(
       cookiesJson = null; // unreadable stored session → fall back to shared cookies
     }
   }
-  if (!cookiesJson && !process.env.FB_COOKIES && !group.isPublic) {
-    return { success: false, needsFacebook: true, error: 'Connect your Facebook account to sync this group.' };
+
+  const usedSession: 'owner' | 'shared' | 'none' =
+    cookiesJson ? 'owner' : process.env.FB_COOKIES ? 'shared' : 'none';
+
+  // This check used to end in `&& !group.isPublic`, so a group marked public
+  // with no session went to the scraper anyway, came back with nothing, and was
+  // reported as a success with zero posts. The comment above always said the
+  // actor needs a session for ANY group; now the code agrees with it, and the
+  // owner gets told to connect instead of seeing a silent empty run.
+  if (usedSession === 'none') {
+    return {
+      success: false,
+      needsFacebook: true,
+      error: 'Connect your Facebook account to sync this group.',
+      diagnostics: {
+        usedSession: 'none',
+        groupUrl: group.url,
+        postsReturnedByScraper: 0,
+        hint: 'No Facebook session is attached. The scraper cannot read any group without one, public or private.'
+      }
+    };
   }
-  // cookiesJson (owner) or, if null, the scraper falls back to shared FB_COOKIES.
 
   const scraper = new PlaywrightScraperService();
   const parser = new OpenAIParserService();
@@ -110,10 +147,22 @@ export async function syncGroupById(
         needsFacebook: true,
         error: hadOwnerSession
           ? 'Your Facebook session expired. Please reconnect Facebook and sync again.'
-          : "Couldn't access this group. Connect a Facebook account that's a member of it, then sync again."
+          : "Couldn't access this group. Connect a Facebook account that's a member of it, then sync again.",
+        diagnostics: {
+          usedSession,
+          groupUrl: group.url,
+          postsReturnedByScraper: 0,
+          hint: hadOwnerSession
+            ? 'The stored session was rejected — it has expired or was invalidated by Facebook.'
+            : 'The shared session cannot read this group. It is probably not a member.'
+        }
       };
     }
-    return { success: false, error: msg };
+    return {
+      success: false,
+      error: msg,
+      diagnostics: { usedSession, groupUrl: group.url, postsReturnedByScraper: 0 }
+    };
   }
 
   const { sendAdminModerationAlert } = require('./email');
@@ -232,10 +281,28 @@ export async function syncGroupById(
       .catch((err: any) => console.error('Failed to update scraping log import count:', err));
   }
 
+  // An empty scrape is reported as such rather than as a quiet success. The run
+  // that prompted all this said `success: true, postsFound: 0` and gave no clue
+  // which of three quite different causes it was.
+  const hint =
+    rawPosts.length === 0
+      ? usedSession === 'shared'
+        ? 'The scraper returned nothing. The shared session is probably not a member of this group — connect the owner\'s own Facebook, or check the group URL.'
+        : 'The scraper returned nothing. Either the connected account is not a member of this group, or the group URL is wrong. Group URLs should look like https://www.facebook.com/groups/<id>.'
+      : undefined;
+
+  if (hint) console.warn(`[Sync] "${group.name}": ${hint} (url: ${group.url}, session: ${usedSession})`);
+
   return {
     success: true,
     postsFound: rawPosts.length,
     listingsImported: newCount,
-    postsSkipped: skipped + unimported
+    postsSkipped: skipped + unimported,
+    diagnostics: {
+      usedSession,
+      groupUrl: group.url,
+      postsReturnedByScraper: rawPosts.length,
+      hint
+    }
   };
 }
