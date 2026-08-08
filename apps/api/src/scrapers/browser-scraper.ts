@@ -20,7 +20,6 @@ export interface BrowserScrapeGroup {
   id: string;
   name: string;
   url: string;
-  keywords: string[];
 }
 
 export interface ScrapedPost {
@@ -33,7 +32,7 @@ export interface ScrapedPost {
 
 export interface BrowserScrapeResult {
   posts: ScrapedPost[];
-  /** Number of post containers seen on the page, before keyword filtering. */
+  /** Number of post containers seen on the page. */
   containersFound: number;
   adminVerified: boolean;
 }
@@ -51,7 +50,7 @@ export async function scrapeGroupWithBrowser(
   opts: BrowserScrapeOptions = {}
 ): Promise<BrowserScrapeResult> {
   const {
-    maxPosts = 100,
+    maxPosts = 5,
     cookiesJson = null,
     log = console.log,
     warn = console.warn,
@@ -241,13 +240,10 @@ export async function scrapeGroupWithBrowser(
           return msgEl ? msgEl.textContent : el.textContent || '';
         });
 
-        // Basic keyword filter to only pull potential selling posts
-        const watchKeywords = group.keywords.length > 0
-          ? group.keywords
-          : ['sell', 'price', 'sale', 'usd', '$', 'car', 'mile', 'runs', 'clean'];
-        const matchesKeyword = watchKeywords.some(kw => rawText.toLowerCase().includes(kw.toLowerCase()));
-
-        if (!matchesKeyword) continue;
+        // No keyword filter. It used to drop any post missing one of a hardcoded
+        // word list ('sell', 'price', 'car'…), so a listing phrased differently
+        // never reached the moderation queue at all. Deciding that is the
+        // operator's job, not a substring match's.
 
         // Scrape adjacent images
         const parentPostContainer = await element.evaluateHandle((el: any) => el.closest('div[role="article"]') || el.parentElement);

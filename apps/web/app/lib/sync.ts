@@ -3,7 +3,7 @@ import { decrypt } from './crypto';
 import { persistImages } from './image-store';
 import { mapWithConcurrency } from './concurrency';
 import { PlaywrightScraperService } from '../../../api/src/scrapers/playwright-scraper.service';
-import { OpenAIParserService } from '../../../api/src/parser/openai-parser.service';
+import { OpenAIParserService, type ExtractedListing } from '../../../api/src/parser/openai-parser.service';
 
 export interface SyncResult {
   success: boolean;
@@ -34,7 +34,7 @@ const WRAP_UP_RESERVE_MS = 5_000;
 
 
 /**
- * Core "sync last 30 days of a group into PENDING imported posts" routine.
+ * Core "sync the most recent posts of a group into the PENDING queue" routine.
  * Shared by the authenticated Sync action and the cron job. Does NOT check a
  * user session — callers are responsible for authorization (the action checks
  * the logged-in owner; the cron checks CRON_SECRET). Not a server action, so it
@@ -77,12 +77,11 @@ export async function syncGroupById(
   const scraper = new PlaywrightScraperService();
   const parser = new OpenAIParserService();
 
-  // Test mode keeps Apify usage minimal during development: fetch only the
-  // latest few posts with no date window. Toggle with SYNC_TEST_MODE=true;
-  // unset (or "false") restores the full "last 30 days" sync.
-  const testMode = process.env.SYNC_TEST_MODE === 'true';
-  const sinceDays = testMode ? 0 : 30; // 0 → skip the 30-day date filter
-  const maxPosts = testMode ? 5 : 100;
+  // Take the most recent posts and let the operator decide, rather than
+  // second-guessing which ones count. Both are env-tunable so raising the reach
+  // later needs no deploy.
+  const maxPosts = Number(process.env.SYNC_MAX_POSTS) || 5;
+  const sinceDays = Number(process.env.SYNC_SINCE_DAYS) || 0; // 0 → no date window
 
   let rawPosts;
   try {
@@ -119,9 +118,9 @@ export async function syncGroupById(
 
   const { sendAdminModerationAlert } = require('./email');
 
-  // Skip empty / media-only posts — they can't be a classified listing and only
-  // clutter the moderation queue.
-  const candidates = rawPosts.filter(post => post.text && post.text.trim().length >= 10);
+  // Only genuinely empty posts are dropped — with no text there is nothing for
+  // the parser to read and nothing for a human to judge in the queue.
+  const candidates = rawPosts.filter(post => post.text && post.text.trim().length > 0);
 
   const parseDeadline = Math.min(Date.now() + PARSE_BUDGET_MS, deadline - WRAP_UP_RESERVE_MS);
   let skipped = 0;
@@ -132,11 +131,16 @@ export async function syncGroupById(
       return null;
     }
     try {
+      // The parser's output prefills the moderation form; it no longer decides
+      // whether the post is imported at all. Gating on isListing meant a
+      // misjudged post was silently discarded and the operator never saw it —
+      // which is exactly what the moderation queue exists to prevent.
       const parsed = await parser.parseRawPost(post.text);
-      return parsed.isListing ? { post, parsed } : null;
+      return { post, parsed };
     } catch (parseErr: any) {
+      // A parse failure must not lose the post either — import it unparsed.
       console.error(`Failed to parse post ${post.id}:`, parseErr?.message || parseErr);
-      return null;
+      return { post, parsed: { isListing: false } as ExtractedListing };
     }
   });
 
