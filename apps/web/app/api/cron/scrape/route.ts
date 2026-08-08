@@ -15,8 +15,14 @@ export const maxDuration = 60;
  */
 const REQUEST_BUDGET_MS = 50_000;
 
-/** Don't start another group unless there is a realistic chance of finishing. */
-const MIN_TIME_PER_GROUP_MS = 12_000;
+/**
+ * Don't start a group unless there is a realistic chance of finishing it.
+ *
+ * Measured against production: an Apify run takes roughly 28s even when it
+ * returns nothing. Starting a group with 12s left, as this used to, only
+ * produced "Apify run exceeded the budget" and burned an actor run for nothing.
+ */
+const MIN_TIME_PER_GROUP_MS = 30_000;
 
 export async function POST(req: Request) {
   try {
@@ -31,9 +37,15 @@ export async function POST(req: Request) {
 
     console.log('[Cron Scrape] Initializing scheduled group indexing loop...');
     
-    // 2. Query all active facebook groups
+    // 2. Active groups, least-recently-synced first.
+    //
+    // Order used to be whatever Postgres returned, so the same groups were
+    // always synced and the same ones always starved — a run reported
+    // groupsNotAttempted: ["car","asd","asd"] every single time. Rotating means
+    // a group missed by one run is first in the next.
     const activeGroups = await prisma.facebookGroup.findMany({
-      where: { isActive: true }
+      where: { isActive: true },
+      orderBy: { lastSyncedAt: { sort: 'asc', nulls: 'first' } }
     });
 
     if (activeGroups.length === 0) {
@@ -56,6 +68,14 @@ export async function POST(req: Request) {
       }
 
       console.log(`[Cron Scrape] Synchronizing group "${group.name}"...`);
+
+      // Stamp the attempt before doing any work, so a group that fails — or
+      // times out mid-sync — still moves to the back of the queue. Stamping on
+      // success only would let a permanently broken group monopolise every run.
+      await prisma.facebookGroup
+        .update({ where: { id: group.id }, data: { lastSyncedAt: new Date() } })
+        .catch(err => console.error(`Failed to stamp lastSyncedAt for ${group.name}:`, err));
+
       let result;
       try {
         result = await syncGroupById(group.id, { deadline });

@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest';
  */
 
 const REQUEST_BUDGET_MS = 50_000; // api/cron/scrape/route.ts
-const MIN_TIME_PER_GROUP_MS = 12_000; // api/cron/scrape/route.ts
+const MIN_TIME_PER_GROUP_MS = 30_000; // api/cron/scrape/route.ts
 const PARSE_BUDGET_MS = 35_000; // lib/sync.ts
 const WRAP_UP_RESERVE_MS = 5_000; // lib/sync.ts
 const MAX_DURATION_MS = 60_000; // Vercel Hobby ceiling
@@ -113,5 +113,67 @@ describe('worst case stays inside the platform limit', () => {
 
     expect(Math.max(afterParse, stopImporting)).toBeLessThanOrEqual(deadline);
     expect(deadline).toBeLessThan(MAX_DURATION_MS);
+  });
+});
+
+/**
+ * Groups are now ordered least-recently-synced first. Before, the order was
+ * whatever Postgres returned, so the same groups were synced every run and the
+ * same ones were never reached at all.
+ */
+describe('group rotation', () => {
+  /** Mirrors `orderBy: { lastSyncedAt: { sort: 'asc', nulls: 'first' } }`. */
+  const rotate = (groups: { name: string; lastSyncedAt: number | null }[]) =>
+    [...groups].sort((a, b) => {
+      if (a.lastSyncedAt === null && b.lastSyncedAt === null) return 0;
+      if (a.lastSyncedAt === null) return -1;
+      if (b.lastSyncedAt === null) return 1;
+      return a.lastSyncedAt - b.lastSyncedAt;
+    });
+
+  it('puts never-synced groups first', () => {
+    const order = rotate([
+      { name: 'synced', lastSyncedAt: 500 },
+      { name: 'never', lastSyncedAt: null },
+      { name: 'older', lastSyncedAt: 100 }
+    ]).map(g => g.name);
+    expect(order).toEqual(['never', 'older', 'synced']);
+  });
+
+  it('orders the rest oldest-first', () => {
+    const order = rotate([
+      { name: 'c', lastSyncedAt: 300 },
+      { name: 'a', lastSyncedAt: 100 },
+      { name: 'b', lastSyncedAt: 200 }
+    ]).map(g => g.name);
+    expect(order).toEqual(['a', 'b', 'c']);
+  });
+
+  it('gives every group a turn across successive runs', () => {
+    // Only one group fits per run at the observed ~30s per Apify call.
+    const groups = ['a', 'b', 'c', 'd'].map(name => ({ name, lastSyncedAt: null as number | null }));
+    const synced: string[] = [];
+
+    for (let run = 1; run <= 4; run++) {
+      const first = rotate(groups)[0];
+      first.lastSyncedAt = run; // stamped at the start of the attempt
+      synced.push(first.name);
+    }
+
+    // Every group synced exactly once — none starved, none repeated.
+    expect(new Set(synced).size).toBe(4);
+  });
+
+  it('rotates a permanently failing group to the back anyway', () => {
+    // lastSyncedAt is stamped before the work, so a group that always fails
+    // cannot monopolise the queue.
+    const groups = [
+      { name: 'broken', lastSyncedAt: null as number | null },
+      { name: 'healthy', lastSyncedAt: null as number | null }
+    ];
+
+    const first = rotate(groups)[0];
+    first.lastSyncedAt = 1; // stamped despite the failure that follows
+    expect(rotate(groups)[0].name).not.toBe(first.name);
   });
 });
