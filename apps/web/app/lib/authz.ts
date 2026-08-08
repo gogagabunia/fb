@@ -63,6 +63,18 @@ export interface AuthzResult {
  * logging out, a demoted one loses it just as fast. One indexed primary-key
  * lookup per protected action.
  */
+/**
+ * Who is looking, for role-aware rendering (header links, panel visibility).
+ * No capability requirement — null just means a signed-out visitor.
+ */
+export async function getViewer(): Promise<{ userId: string; role: AppRole } | null> {
+  const userId = await getSession();
+  if (!userId) return null;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!user) return null;
+  return { userId, role: normalizeRole(user.role) };
+}
+
 export async function requireCapability(capability: Capability): Promise<AuthzResult> {
   const userId = await getSession();
   if (!userId) {
