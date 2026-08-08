@@ -31,6 +31,14 @@ export interface ApifyRunReport {
   statusMessage?: string | null;
   /** Rows in the run's dataset, before any mapping or filtering of ours. */
   itemCount: number;
+  /**
+   * Whether a proxy was configured for the run.
+   *
+   * Apify runs on datacenter IPs and Facebook blocks those, so without one the
+   * actor is shown a login wall no matter how valid the session is — which is
+   * exactly what production hit, with ten cookies injected and zero posts read.
+   */
+  usedProxy: boolean;
   /** Tail of the actor's own log, fetched only when it produced no rows. */
   logTail?: string;
 }
@@ -254,6 +262,20 @@ export class PlaywrightScraperService {
       }
     }
 
+    // Facebook blocks datacenter IPs, and Apify runs on them. Without a proxy
+    // the actor gets a login wall however good the session is — its own log
+    // read "No proxy configured", "Injecting 10 cookies", then "Login prompt
+    // detected" and zero posts. Any residential proxy URL works; Apify's own is
+    // `http://groups-RESIDENTIAL:<password>@proxy.apify.com:8000`.
+    const proxyUrl = process.env.APIFY_PROXY_URL;
+    if (proxyUrl) {
+      input.proxyUrl = proxyUrl;
+    } else {
+      this.logger.warn(
+        'APIFY_PROXY_URL is not set. Facebook blocks datacenter IPs, so this run will probably be shown a login wall and return nothing.'
+      );
+    }
+
     // An Apify run is unbounded from our side, and left that way it swallowed
     // the caller's whole budget — the cron route died at 60s with
     // FUNCTION_INVOCATION_TIMEOUT before parsing anything.
@@ -297,7 +319,8 @@ export class PlaywrightScraperService {
         id: run.id,
         status: String(run.status),
         statusMessage: run.statusMessage ?? null,
-        itemCount: 0
+        itemCount: 0,
+        usedProxy: Boolean(proxyUrl)
       };
 
       if (run.status !== 'SUCCEEDED') {

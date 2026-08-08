@@ -4,6 +4,7 @@ import { persistImages } from './image-store';
 import { mapWithConcurrency } from './concurrency';
 import { PlaywrightScraperService, type ApifyRunReport } from '../../../api/src/scrapers/playwright-scraper.service';
 import { OpenAIParserService, type ExtractedListing } from '../../../api/src/parser/openai-parser.service';
+import { emptyScrapeHint } from './sync-diagnostics';
 
 export interface SyncResult {
   success: boolean;
@@ -298,9 +299,7 @@ export async function syncGroupById(
   // which of three quite different causes it was.
   const hint =
     rawPosts.length === 0
-      ? usedSession === 'shared'
-        ? 'The scraper returned nothing. The shared session is probably not a member of this group — connect the owner\'s own Facebook, or check the group URL.'
-        : 'The scraper returned nothing. Either the connected account is not a member of this group, or the group URL is wrong. Group URLs should look like https://www.facebook.com/groups/<id>.'
+      ? emptyScrapeHint({ usedSession, usedProxy: scraper.lastApifyRun?.usedProxy })
       : undefined;
 
   if (hint) console.warn(`[Sync] "${group.name}": ${hint} (url: ${group.url}, session: ${usedSession})`);

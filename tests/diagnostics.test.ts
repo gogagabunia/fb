@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { emptyScrapeHint } from '../apps/web/app/lib/sync-diagnostics';
 
 /**
  * A sync that reported `success: true, postsFound: 0` used to be unanswerable —
@@ -57,29 +58,37 @@ describe('refusing to scrape without a session', () => {
 });
 
 describe('explaining an empty scrape', () => {
-  /** Mirrors the hint sync.ts attaches when the scraper returns nothing. */
-  function hintFor(postsReturned: number, session: Session): string | undefined {
-    if (postsReturned > 0) return undefined;
-    return session === 'shared'
-      ? 'The scraper returned nothing. The shared session is probably not a member of this group — connect the owner\'s own Facebook, or check the group URL.'
-      : 'The scraper returned nothing. Either the connected account is not a member of this group, or the group URL is wrong. Group URLs should look like https://www.facebook.com/groups/<id>.';
-  }
-
-  it('says nothing when posts came back', () => {
-    expect(hintFor(5, 'owner')).toBeUndefined();
-  });
-
   it('points at group membership when the owner session found nothing', () => {
-    expect(hintFor(0, 'owner')).toMatch(/not a member|group URL/);
+    expect(emptyScrapeHint({ usedSession: 'owner', usedProxy: true })).toMatch(/not a member|group URL/);
   });
 
   it('names the shared session specifically, since that is the likelier culprit', () => {
-    expect(hintFor(0, 'shared')).toContain('shared session');
+    expect(emptyScrapeHint({ usedSession: 'shared', usedProxy: true })).toContain('shared session');
+  });
+
+  it('blames the missing proxy first, whatever the session', () => {
+    // Production hit exactly this: the actor logged "No proxy configured",
+    // injected ten valid cookies, and was still shown a login prompt. Leading
+    // with the session would send someone off reconnecting a Facebook account
+    // that was never the problem.
+    for (const usedSession of ['owner', 'shared'] as Session[]) {
+      const hint = emptyScrapeHint({ usedSession, usedProxy: false });
+      expect(hint, usedSession).toContain('APIFY_PROXY_URL');
+      expect(hint, usedSession).not.toContain('not a member');
+    }
+  });
+
+  it('falls back to the session reading when the proxy state is unknown', () => {
+    // The browser fallback never reports one, so undefined must not be read
+    // as "no proxy" and mask the real cause.
+    expect(emptyScrapeHint({ usedSession: 'shared' })).toContain('shared session');
   });
 
   it('always suggests something actionable', () => {
-    for (const session of ['owner', 'shared'] as Session[]) {
-      expect(hintFor(0, session)!.length).toBeGreaterThan(40);
+    for (const usedProxy of [true, false, undefined]) {
+      for (const usedSession of ['owner', 'shared'] as Session[]) {
+        expect(emptyScrapeHint({ usedSession, usedProxy }).length).toBeGreaterThan(40);
+      }
     }
   });
 });
