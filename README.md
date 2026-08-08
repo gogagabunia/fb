@@ -41,6 +41,7 @@ Generate the secrets with `openssl rand -base64 48`.
 | Variable | Effect when unset |
 | --- | --- |
 | `APIFY_API_TOKEN` | Falls back to the local Playwright scraper. |
+| `APIFY_PROXY_URL` | **Scrapes return nothing.** Apify runs on datacenter IPs and Facebook blocks those, so the actor is shown a login wall however valid the session is. See below. |
 | `FB_COOKIES` | Shared Facebook session; per-owner sessions are used first. |
 | `GEMINI_API_KEY` / `GROQ_API_KEY` / `OPENAI_API_KEY` | Parser falls through Gemini → Groq → OpenAI → local regex heuristics. |
 | `STRIPE_SECRET_KEY` | Listing promotion returns 503 (`Payments are not configured`). |
@@ -139,6 +140,33 @@ telemetry:
 
 Group URLs should look like `https://www.facebook.com/groups/<id>`. A profile
 link or a search URL returns nothing with no error.
+
+### A session is not enough — the run also needs a proxy
+
+Apify's actors run on datacenter IPs, and Facebook blocks those aggressively. A
+production run with a valid connected session read zero posts and its log said
+why:
+
+```
+[MAIN] Starting: ... cookies=10 cookies
+[PROXY] No proxy configured. Facebook blocks datacenter IPs
+[SCRAPER] Injecting 10 cookies for authenticated access
+[SCRAPER] Login prompt detected, but cookies are present
+[MAIN] Total posts scraped: 0
+```
+
+The cookies arrived and were injected. Facebook served a login wall anyway,
+because of where the request came from. `APIFY_PROXY_URL` is passed to the actor
+as `proxyUrl`; any residential proxy works, and Apify's own looks like:
+
+```
+http://groups-RESIDENTIAL:<APIFY_PROXY_PASSWORD>@proxy.apify.com:8000
+```
+
+Residential proxy is billed per GB and is not on the free plan. Until the
+variable is set, every sync logs a warning up front and any empty result says
+so in its `hint` — the missing proxy is reported ahead of the session, because
+it blocks the request before Facebook ever looks at the cookies.
 
 ### Reading the `apify` block
 
