@@ -86,7 +86,9 @@ export async function getMarketplaceListings(query: MarketplaceQuery = {}) {
     const where: any = { isActive: true };
 
     if (category && category !== 'All') {
-      where.category = category;
+      // Accepts either the display name (the filter dropdown) or the slug
+      // (homepage links like /marketplace?category=vehicles).
+      where.categoryRel = { OR: [{ name: category }, { slug: category }] };
     }
 
     if (minPrice != null || maxPrice != null) {
@@ -100,7 +102,7 @@ export async function getMarketplaceListings(query: MarketplaceQuery = {}) {
       where.OR = [
         { title: { contains: term, mode: 'insensitive' } },
         { description: { contains: term, mode: 'insensitive' } },
-        { category: { contains: term, mode: 'insensitive' } },
+        { categoryRel: { name: { contains: term, mode: 'insensitive' } } },
         { importedPost: { group: { name: { contains: term, mode: 'insensitive' } } } }
       ];
     }
@@ -130,13 +132,13 @@ export async function getMarketplaceListings(query: MarketplaceQuery = {}) {
  *
  * This used to pull every active listing and filter four out of it in memory.
  */
-export async function getSimilarListings(listingId: string, category: string, take = 4) {
+export async function getSimilarListings(listingId: string, categoryId: string, take = 4) {
   try {
     return await prisma.listing.findMany({
       where: {
         isActive: true,
         id: { not: listingId },
-        category
+        categoryId
       },
       include: LISTING_INCLUDE,
       orderBy: { createdAt: 'desc' },
@@ -397,7 +399,6 @@ export async function approvePostAction(id: string, data: {
         description: data.description,
         images: importedPost.images,
         location: data.location || 'Unknown Location',
-        category: data.category,
         specs: data.specs || {},
         originalPostUrl: importedPost.fbPostId,
         contactUrl: importedPost.authorProfile || `https://facebook.com/profile`,
@@ -678,7 +679,7 @@ export async function getAnalyticsSummaryAction() {
     contactClicks: 0,
     fbClicks: 0,
     ctr: 0,
-    topListings: [] as { id: string; title: string; price: number; viewsCount: number; clicksCount: number; category: string }[],
+    topListings: [] as { id: string; title: string; price: number; viewsCount: number; clicksCount: number; categoryRel: { name: string } | null }[],
     dailyViews: [] as { date: string; views: number }[]
   };
 
@@ -709,7 +710,7 @@ export async function getAnalyticsSummaryAction() {
           price: true,
           viewsCount: true,
           clicksCount: true,
-          category: true
+          categoryRel: { select: { name: true } }
         }
       })
     ]);

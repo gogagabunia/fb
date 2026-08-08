@@ -81,7 +81,17 @@ export default async function ListingDetailPage({ params }: PageProps) {
   }
 
   // 2. Fetch similar listings for related carousel (same category)
-  const similarListings = (await getSimilarListings(listing.id, listing.category)) as any[];
+  const similarListings = (await getSimilarListings(listing.id, listing.categoryId)) as any[];
 
-  return <ListingDetailClient listing={listing as any} similarListings={similarListings} />;
+  // The client component renders `category` as a display string. The string
+  // column is gone from the schema, so project the relation's name into the
+  // shape the client already expects rather than teaching it about relations.
+  const withCategoryName = (l: any) => ({ ...l, category: l.categoryRel?.name ?? 'Other' });
+
+  return (
+    <ListingDetailClient
+      listing={withCategoryName(listing)}
+      similarListings={similarListings.map(withCategoryName)}
+    />
+  );
 }

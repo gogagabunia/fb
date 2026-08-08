@@ -8,9 +8,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Three kinds of account. BUYER browses and saves favorites; SELLER owns
+// Facebook groups and moderates what they import; ADMIN is the site operator.
+// The legacy value USER may still exist in rows until the reset SQL runs —
+// authz reads it as BUYER.
 enum Role {
-  USER
   ADMIN
+  SELLER
+  BUYER
 }
 
 enum PostStatus {
@@ -33,7 +38,7 @@ model User {
   firstName      String?
   lastName       String?
   imageUrl       String?
-  role           Role             @default(USER)
+  role           Role             @default(BUYER)
   // Facebook session for private-group scraping (AES-256-GCM encrypted cookie JSON)
   fbSessionCookies String?        @db.Text
   fbSessionStatus  String?        // 'ACTIVE' | 'EXPIRED' | 'NONE'
@@ -106,7 +111,6 @@ model Listing {
   description    String           @db.Text
   images         String[]
   location       String?
-  category       String
   specs          Json             // Key-value attributes parsed by AI (e.g. make, model, year, mileage)
   originalPostUrl String
   contactUrl     String
