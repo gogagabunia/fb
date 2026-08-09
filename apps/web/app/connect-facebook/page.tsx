@@ -1,40 +1,28 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { getCurrentUser } from '../auth-actions';
 import Sidebar from '../components/sidebar';
+import { getLang, makeT, LANG_COOKIE } from '../lib/i18n';
+import { miscStrings } from '../lib/i18n/misc';
 
-export const metadata = {
-  title: 'Connect Facebook — GroupMarket'
-};
-
-const STEPS = [
-  {
-    title: 'Download and unzip',
-    body: 'Use the button above, then unzip it. You should end up with a folder containing manifest.json.'
-  },
-  {
-    title: 'Open your browser’s extensions page',
-    body: 'Type chrome://extensions in the address bar (edge://extensions on Edge, brave://extensions on Brave) and press Enter.'
-  },
-  {
-    title: 'Turn on Developer mode',
-    body: 'The toggle is in the top-right corner of that page.'
-  },
-  {
-    title: 'Click "Load unpacked"',
-    body: 'Select the unzipped folder — the one with manifest.json directly inside it, not its parent.'
-  },
-  {
-    title: 'Log into Facebook in the same browser',
-    body: 'The extension reads the session you already have. If you are not logged in, it has nothing to send.'
-  },
-  {
-    title: 'Click the extension icon, then "Connect this Facebook account"',
-    body: 'Come back here and your status will show as connected.'
-  }
-];
+export async function generateMetadata() {
+  const lang = getLang((await cookies()).get(LANG_COOKIE)?.value);
+  return { title: miscStrings.cfMetaTitle[lang] };
+}
 
 export default async function ConnectFacebookPage() {
+  const lang = getLang((await cookies()).get(LANG_COOKIE)?.value);
+  const tr = makeT(miscStrings, lang);
   const user = await getCurrentUser();
+
+  const steps = [
+    { title: tr('cfStep1Title'), body: tr('cfStep1Body') },
+    { title: tr('cfStep2Title'), body: tr('cfStep2Body') },
+    { title: tr('cfStep3Title'), body: tr('cfStep3Body') },
+    { title: tr('cfStep4Title'), body: tr('cfStep4Body') },
+    { title: tr('cfStep5Title'), body: tr('cfStep5Body') },
+    { title: tr('cfStep6Title'), body: tr('cfStep6Body') }
+  ];
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-sans">
@@ -43,10 +31,9 @@ export default async function ConnectFacebookPage() {
 
         <main className="flex-grow p-md md:p-xl overflow-y-auto max-w-container-max h-full">
           <header className="border-b border-outline-variant/20 pb-md mb-xl">
-            <h1 className="text-display-lg font-bold text-primary">Connect Facebook</h1>
+            <h1 className="text-display-lg font-bold text-primary">{tr('cfTitle')}</h1>
             <p className="text-body-lg text-on-surface-variant mt-xs max-w-2xl">
-              Syncing a group needs a logged-in Facebook session. The GroupMarket Connector
-              extension attaches yours in one click — no password, no copying cookies by hand.
+              {tr('cfIntro')}
             </p>
           </header>
 
@@ -56,7 +43,7 @@ export default async function ConnectFacebookPage() {
               <div>
                 <h2 className="text-title-lg font-bold text-primary">GroupMarket Connector</h2>
                 <p className="text-body-sm text-on-surface-variant mt-xs">
-                  Chrome, Edge, Brave and Opera. Not Firefox — it uses a different extension API.
+                  {tr('cfBrowsers')}
                 </p>
               </div>
               <a
@@ -64,7 +51,7 @@ export default async function ConnectFacebookPage() {
                 download
                 className="bg-primary text-on-primary px-xl py-md rounded-xl font-bold text-label-md shadow-md hover:shadow-lg transition-all active:scale-95 text-center whitespace-nowrap"
               >
-                Download extension
+                {tr('cfDownload')}
               </a>
             </div>
 
@@ -72,17 +59,15 @@ export default async function ConnectFacebookPage() {
                 an extension for the user. Saying so is better than a button that
                 cannot do what its label implies. */}
             <p className="text-body-xs text-on-surface-variant mt-lg border-t border-outline-variant/20 pt-md">
-              Browsers do not allow a website to install an extension directly — that was removed
-              from Chrome in 2018. The six steps below are the manual route, and they take about a
-              minute.
+              {tr('cfNoInlineInstall')}
             </p>
           </section>
 
           {/* Steps */}
           <section className="mb-xl">
-            <h2 className="text-title-lg font-bold text-primary mb-md">Installing it</h2>
+            <h2 className="text-title-lg font-bold text-primary mb-md">{tr('cfInstalling')}</h2>
             <ol className="space-y-md">
-              {STEPS.map((step, i) => (
+              {steps.map((step, i) => (
                 <li
                   key={step.title}
                   className="flex gap-md bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-lg"
@@ -101,16 +86,15 @@ export default async function ConnectFacebookPage() {
 
           {/* What it can see */}
           <section className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-xl mb-xl">
-            <h2 className="text-title-lg font-bold text-primary mb-sm">What it can access</h2>
+            <h2 className="text-title-lg font-bold text-primary mb-sm">{tr('cfAccessTitle')}</h2>
             <ul className="text-body-sm text-on-surface-variant space-y-xs list-disc pl-lg">
-              <li>Your facebook.com cookies — the session that proves you are logged in.</li>
-              <li>Your GroupMarket session cookie, so it knows which account to attach them to.</li>
+              <li>{tr('cfAccessCookies')}</li>
+              <li>{tr('cfAccessSession')}</li>
             </ul>
             <p className="text-body-sm text-on-surface-variant mt-md">
-              It never sees your Facebook password. The session is encrypted before it is stored and
-              is never shown back to you or anyone else. You can revoke it any time from{' '}
+              {tr('cfAccessNote')}{' '}
               <Link href="/settings" className="text-primary underline font-semibold">
-                Settings
+                {tr('cfSettingsLink')}
               </Link>
               .
             </p>
@@ -118,12 +102,9 @@ export default async function ConnectFacebookPage() {
 
           {/* The honest caveat */}
           <section className="border border-amber-300 bg-amber-50 rounded-xl p-xl mb-xl">
-            <h2 className="text-title-md font-bold text-amber-900 mb-sm">Worth knowing</h2>
+            <h2 className="text-title-md font-bold text-amber-900 mb-sm">{tr('cfCaveatTitle')}</h2>
             <p className="text-body-sm text-amber-900">
-              Reading group posts with a member&apos;s session goes against Facebook&apos;s terms of
-              service, and accounts doing it can be restricted. The extension does not change that
-              risk — it only makes attaching the session easier. Consider using an account you can
-              afford to lose access to.
+              {tr('cfCaveatBody')}
             </p>
           </section>
 
@@ -132,13 +113,13 @@ export default async function ConnectFacebookPage() {
               href="/settings"
               className="bg-primary text-on-primary px-xl py-md rounded-xl font-bold text-label-md shadow-md hover:shadow-lg transition-all active:scale-95"
             >
-              Check connection status
+              {tr('cfCheckStatus')}
             </Link>
             <Link
               href="/dashboard"
               className="bg-surface-container-high text-primary px-xl py-md rounded-xl font-bold text-label-md hover:bg-surface-container-highest transition-all"
             >
-              Back to dashboard
+              {tr('cfBackToDashboard')}
             </Link>
           </div>
         </main>

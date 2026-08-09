@@ -11,8 +11,13 @@ import {
 } from '../actions';
 import { getCurrentUser } from '../auth-actions';
 import Sidebar from '../components/sidebar';
+import { makeT } from '../lib/i18n';
+import { addGroupStrings } from '../lib/i18n/addgroup';
+import { useLang } from '../components/lang-provider';
 
 export default function AddGroupWizardPage() {
+  const lang = useLang();
+  const tr = makeT(addGroupStrings, lang);
   // Navigation & UI modes
   const [isCreating, setIsCreating] = useState(false);
   const [groups, setGroups] = useState<any[]>([]);
@@ -91,7 +96,7 @@ export default function AddGroupWizardPage() {
   const nextStep = async () => {
     if (step === 1) {
       if (!groupUrl) {
-        showToast('Please provide a valid Facebook Group URL!', 'error');
+        showToast(tr('urlRequired'), 'error');
         return;
       }
       if (!groupName) {
@@ -106,10 +111,10 @@ export default function AddGroupWizardPage() {
               .join(' ');
             setGroupName(cleanName);
           } else {
-            setGroupName('Local Buy/Sell Group');
+            setGroupName(tr('defaultGroupName'));
           }
         } catch (e) {
-          setGroupName('Local Buy/Sell Group');
+          setGroupName(tr('defaultGroupName'));
         }
       }
       setStep(2);
@@ -117,7 +122,7 @@ export default function AddGroupWizardPage() {
       setStep(3);
     } else if (step === 3) {
       setSubmitting(true);
-      showToast('Connecting source in PostgreSQL database...', 'info');
+      showToast(tr('connectingDb'), 'info');
 
       try {
         const keywordsArray = keywords
@@ -136,7 +141,7 @@ export default function AddGroupWizardPage() {
         });
 
         if (groupRes.success && groupRes.group) {
-          showToast('Source connected successfully! Executing initial sync...', 'success');
+          showToast(tr('sourceConnected'), 'success');
           setStep(4);
           
           let progressVal = 10;
@@ -152,23 +157,23 @@ export default function AddGroupWizardPage() {
           triggerScrapingAction(groupRes.group.id)
             .then((scrapeRes) => {
               if (scrapeRes.success) {
-                showToast(`Scrape Done! Ingested ${scrapeRes.listingsImported} classified items.`, 'success');
+                showToast(tr('scrapeDone').replace('{n}', String(scrapeRes.listingsImported)), 'success');
               } else {
-                showToast(`Sync alert: Remote browserless CDP loaded sandbox template items.`, 'info');
+                showToast(tr('syncSandboxAlert'), 'info');
               }
               refreshGroups();
             })
             .catch((err) => {
               console.error('Background ingestion error:', err);
-              showToast('Scraper finished. Ingested fallback vehicle records.', 'info');
+              showToast(tr('scraperFallback'), 'info');
               refreshGroups();
             });
 
         } else {
-          showToast(`Error: ${groupRes.error}`, 'error');
+          showToast(tr('errorGeneric').replace('{err}', groupRes.error ?? ''), 'error');
         }
       } catch (error: any) {
-        showToast(`Submission failed: ${error.message}`, 'error');
+        showToast(tr('submissionFailed').replace('{err}', error.message), 'error');
       } finally {
         setSubmitting(false);
       }
@@ -192,17 +197,17 @@ export default function AddGroupWizardPage() {
   // Sync individual group on-demand
   async function handleIndividualSync(id: string) {
     setSyncingGroupId(id);
-    showToast('Connecting to Browserless CDP WebSocket and launching scraper...', 'info');
+    showToast(tr('launchingScraper'), 'info');
 
     try {
       const scrapeRes = await triggerScrapingAction(id);
       if (scrapeRes.success) {
-        showToast(`Sync finished! Ingested ${scrapeRes.listingsImported} listings successfully.`, 'success');
+        showToast(tr('syncFinished').replace('{n}', String(scrapeRes.listingsImported)), 'success');
       } else {
-        showToast('Sync finished using CDP sandbox templates.', 'info');
+        showToast(tr('syncFinishedSandbox'), 'info');
       }
     } catch (err: any) {
-      showToast(err.message || 'Scraping finalized.', 'info');
+      showToast(err.message || tr('scrapingFinalized'), 'info');
     } finally {
       setSyncingGroupId(null);
     }
@@ -222,12 +227,12 @@ export default function AddGroupWizardPage() {
 
   async function handleUpdateGroup(id: string) {
     if (!editName.trim() || !editUrl.trim()) {
-      showToast('Name and URL cannot be blank.', 'info');
+      showToast(tr('nameUrlBlank'), 'info');
       return;
     }
 
     setUpdating(true);
-    showToast('Updating source parameters...', 'info');
+    showToast(tr('updatingParams'), 'info');
 
     try {
       const keywordsArray = editKeywords
@@ -242,14 +247,14 @@ export default function AddGroupWizardPage() {
       });
 
       if (res.success) {
-        showToast('Group configuration updated successfully!', 'success');
+        showToast(tr('updateSuccess'), 'success');
         setEditingGroupId(null);
         refreshGroups();
       } else {
-        showToast(res.error || 'Failed to update configuration.', 'error');
+        showToast(res.error || tr('updateFailed'), 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Update failed.', 'error');
+      showToast(err.message || tr('updateFailedShort'), 'error');
     } finally {
       setUpdating(false);
     }
@@ -257,19 +262,19 @@ export default function AddGroupWizardPage() {
 
   // Safe delete triggers
   async function handleDeleteGroup(id: string) {
-    showToast('Deleting source from cloud database...', 'info');
+    showToast(tr('deletingSource'), 'info');
 
     try {
       const res = await disconnectFacebookGroupAction(id);
       if (res.success) {
-        showToast('Successfully disconnected group and cleaned up database relations!', 'success');
+        showToast(tr('deleteSuccess'), 'success');
         setConfirmDeleteId(null);
         refreshGroups();
       } else {
-        showToast(res.error || 'Failed to disconnect group.', 'error');
+        showToast(res.error || tr('deleteFailed'), 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Deletion failed.', 'error');
+      showToast(err.message || tr('deletionFailed'), 'error');
     }
   }
 
@@ -309,7 +314,7 @@ export default function AddGroupWizardPage() {
             <div className="w-full h-full flex flex-col items-center justify-center gap-md">
               <span className="material-symbols-outlined text-[48px] text-primary animate-spin">sync</span>
               <p className="text-label-md text-slate-400 font-bold uppercase tracking-wider">
-                Loading Source Workspace...
+                {tr('loadingWorkspace')}
               </p>
             </div>
           ) : (
@@ -318,9 +323,9 @@ export default function AddGroupWizardPage() {
               {/* Header Panel */}
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-md border-b border-outline-variant/30 pb-lg">
                 <div>
-                  <h1 className="text-headline-md font-bold text-primary">Connected Groups Workspace</h1>
+                  <h1 className="text-headline-md font-bold text-primary">{tr('workspaceTitle')}</h1>
                   <p className="text-body-md text-on-surface-variant leading-relaxed">
-                    Manage your active target Facebook Group pipelines, configure brand filters, or connect new feeds.
+                    {tr('workspaceSubtitle')}
                   </p>
                 </div>
                 {groups.length > 0 && (
@@ -334,7 +339,7 @@ export default function AddGroupWizardPage() {
                     <span className="material-symbols-outlined text-[20px]">
                       {isCreating ? 'dashboard' : 'add'}
                     </span>
-                    {isCreating ? 'Back to Workspace' : 'Connect New Source'}
+                    {isCreating ? tr('backToWorkspace') : tr('connectNewSource')}
                   </button>
                 )}
               </div>
@@ -363,35 +368,35 @@ export default function AddGroupWizardPage() {
                             // Inline Edit UI Mode
                             <div className="space-y-md">
                               <div className="flex flex-col gap-xs">
-                                <label className="text-[11px] font-bold text-slate-400 uppercase">Group Label Name</label>
+                                <label className="text-[11px] font-bold text-slate-400 uppercase">{tr('groupLabelName')}</label>
                                 <input
                                   type="text"
                                   value={editName}
                                   onChange={(e) => setEditName(e.target.value)}
                                   className="w-full h-10 px-sm rounded-lg border border-outline-variant outline-none focus:border-primary text-xs font-semibold"
-                                  placeholder="e.g. California Cars Classifieds"
+                                  placeholder={tr('groupNameExample')}
                                 />
                               </div>
 
                               <div className="flex flex-col gap-xs">
-                                <label className="text-[11px] font-bold text-slate-400 uppercase">Facebook Group URL</label>
+                                <label className="text-[11px] font-bold text-slate-400 uppercase">{tr('fbGroupUrl')}</label>
                                 <input
                                   type="url"
                                   value={editUrl}
                                   onChange={(e) => setEditUrl(e.target.value)}
                                   className="w-full h-10 px-sm rounded-lg border border-outline-variant outline-none focus:border-primary text-xs font-semibold"
-                                  placeholder="e.g. https://facebook.com/groups/california-auto"
+                                  placeholder={tr('groupUrlExample')}
                                 />
                               </div>
 
                               <div className="flex flex-col gap-xs">
-                                <label className="text-[11px] font-bold text-slate-400 uppercase">Keywords (Comma Separated)</label>
+                                <label className="text-[11px] font-bold text-slate-400 uppercase">{tr('keywordsComma')}</label>
                                 <input
                                   type="text"
                                   value={editKeywords}
                                   onChange={(e) => setEditKeywords(e.target.value)}
                                   className="w-full h-10 px-sm rounded-lg border border-outline-variant outline-none focus:border-primary text-xs font-medium"
-                                  placeholder="BMW, Porsche, Mazda"
+                                  placeholder={tr('keywordsExample')}
                                 />
                               </div>
                             </div>
@@ -414,13 +419,13 @@ export default function AddGroupWizardPage() {
                                   </a>
                                 </div>
                                 <span className="px-xs py-xxs bg-secondary/10 text-secondary rounded-full text-[10px] font-bold uppercase tracking-wider block">
-                                  Automated CDP Sync
+                                  {tr('automatedSync')}
                                 </span>
                               </div>
 
                               {/* Ingestion metrics badges */}
                               <div className="pt-sm space-y-xs">
-                                <span className="text-[11px] font-bold text-slate-500 uppercase block">Keywords Monitored</span>
+                                <span className="text-[11px] font-bold text-slate-500 uppercase block">{tr('keywordsMonitored')}</span>
                                 <div className="flex flex-wrap gap-xs">
                                   {group.keywords.length > 0 ? (
                                     group.keywords.map((kw: string, i: number) => (
@@ -433,7 +438,7 @@ export default function AddGroupWizardPage() {
                                     ))
                                   ) : (
                                     <span className="text-body-sm text-slate-400 italic font-medium">
-                                      Scanning all feed posts
+                                      {tr('scanningAllPosts')}
                                     </span>
                                   )}
                                 </div>
@@ -451,7 +456,7 @@ export default function AddGroupWizardPage() {
                                 disabled={updating}
                                 className="px-md py-sm bg-surface-container-high text-on-surface rounded-lg text-label-xs font-bold shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-xxs"
                               >
-                                Cancel
+                                {tr('cancel')}
                               </button>
                               <button
                                 onClick={() => handleUpdateGroup(group.id)}
@@ -459,26 +464,26 @@ export default function AddGroupWizardPage() {
                                 className="flex-grow py-sm bg-secondary text-on-secondary rounded-lg text-label-xs font-bold shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-xxs"
                               >
                                 <span className="material-symbols-outlined text-[14px]">save</span>
-                                {updating ? 'Saving...' : 'Save Configuration'}
+                                {updating ? tr('saving') : tr('saveConfig')}
                               </button>
                             </div>
                           ) : isDeleting ? (
                             <div className="bg-error/5 border border-error/25 p-sm rounded-lg flex flex-col sm:flex-row items-center justify-between gap-sm w-full">
                               <span className="text-[11px] text-error font-bold leading-relaxed">
-                                Are you sure? Deleting this group removes all scraped listings.
+                                {tr('deleteConfirmText')}
                               </span>
                               <div className="flex items-center gap-xs shrink-0">
                                 <button
                                   onClick={() => setConfirmDeleteId(null)}
                                   className="px-sm py-xs bg-surface-container-high text-on-surface text-[10px] font-bold rounded"
                                 >
-                                  Cancel
+                                  {tr('cancel')}
                                 </button>
                                 <button
                                   onClick={() => handleDeleteGroup(group.id)}
                                   className="px-sm py-xs bg-error text-white text-[10px] font-bold rounded hover:opacity-90"
                                 >
-                                  Disconnect
+                                  {tr('disconnect')}
                                 </button>
                               </div>
                             </div>
@@ -488,14 +493,14 @@ export default function AddGroupWizardPage() {
                                 <button
                                   onClick={() => startEditing(group)}
                                   className="p-sm bg-surface-container-high text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                                  title="Edit source parameters"
+                                  title={tr('editSourceTitle')}
                                 >
                                   <span className="material-symbols-outlined text-[18px]">edit</span>
                                 </button>
                                 <button
                                   onClick={() => setConfirmDeleteId(group.id)}
                                   className="p-sm bg-surface-container-high text-on-surface-variant hover:text-error hover:bg-error/5 rounded-lg transition-all"
-                                  title="Disconnect source pipeline"
+                                  title={tr('disconnectSourceTitle')}
                                 >
                                   <span className="material-symbols-outlined text-[18px]">delete</span>
                                 </button>
@@ -508,7 +513,7 @@ export default function AddGroupWizardPage() {
                                 <span className={`material-symbols-outlined text-[14px] ${isSyncing ? 'animate-spin' : ''}`}>
                                   sync
                                 </span>
-                                {isSyncing ? 'CDP Syncing...' : 'Sync Feed'}
+                                {isSyncing ? tr('syncing') : tr('syncFeed')}
                               </button>
                             </div>
                           )}
@@ -537,7 +542,7 @@ export default function AddGroupWizardPage() {
                           {step > 1 ? <span className="material-symbols-outlined text-sm">check</span> : '1'}
                         </div>
                         <span className={`text-label-sm font-semibold ${step >= 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
-                          Connect
+                          {tr('stepConnect')}
                         </span>
                       </div>
 
@@ -550,7 +555,7 @@ export default function AddGroupWizardPage() {
                           {step > 2 ? <span className="material-symbols-outlined text-sm">check</span> : '2'}
                         </div>
                         <span className={`text-label-sm font-semibold ${step >= 2 ? 'text-secondary' : 'text-on-surface-variant'}`}>
-                          Categories
+                          {tr('stepCategories')}
                         </span>
                       </div>
 
@@ -563,7 +568,7 @@ export default function AddGroupWizardPage() {
                           {step > 3 ? <span className="material-symbols-outlined text-sm">check</span> : '3'}
                         </div>
                         <span className={`text-label-sm font-semibold ${step >= 3 ? 'text-secondary' : 'text-on-surface-variant'}`}>
-                          Rules
+                          {tr('stepRules')}
                         </span>
                       </div>
                     </div>
@@ -576,18 +581,18 @@ export default function AddGroupWizardPage() {
                       {step === 1 && (
                         <section className="animate-fade-in space-y-lg">
                           <div className="mb-lg">
-                            <h2 className="text-headline-sm font-bold text-primary mb-xs">Paste Group Details</h2>
+                            <h2 className="text-headline-sm font-bold text-primary mb-xs">{tr('step1Title')}</h2>
                             <p className="text-body-md text-on-surface-variant">
-                              Connect a Facebook Buy/Sell group to start monitoring for listings automatically.
+                              {tr('step1Subtitle')}
                             </p>
                           </div>
                           <div className="space-y-lg">
                             <div className="flex flex-col gap-xs">
-                              <label className="text-label-md font-bold text-on-surface">Facebook Group URL</label>
+                              <label className="text-label-md font-bold text-on-surface">{tr('fbGroupUrl')}</label>
                               <div className="relative">
                                 <input
                                   className="w-full h-14 px-md rounded-lg border border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all text-body-lg bg-surface-container-low/30"
-                                  placeholder="e.g. https://facebook.com/groups/scottsdale-classifieds"
+                                  placeholder={tr('wizardUrlPlaceholder')}
                                   type="url"
                                   value={groupUrl}
                                   onChange={(e) => setGroupUrl(e.target.value)}
@@ -599,10 +604,10 @@ export default function AddGroupWizardPage() {
                             </div>
 
                             <div className="flex flex-col gap-xs">
-                              <label className="text-label-md font-bold text-on-surface">Custom Label / Group Name</label>
+                              <label className="text-label-md font-bold text-on-surface">{tr('customLabel')}</label>
                               <input
                                   className="w-full h-14 px-md rounded-lg border border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all text-body-lg bg-surface-container-low/30"
-                                placeholder="e.g. Scottsdale Classifieds (Optional)"
+                                placeholder={tr('wizardNamePlaceholder')}
                                 type="text"
                                 value={groupName}
                                 onChange={(e) => setGroupName(e.target.value)}
@@ -612,7 +617,7 @@ export default function AddGroupWizardPage() {
                             <div className="p-md bg-secondary-container/10 rounded-lg border border-secondary-container/20 flex gap-md">
                               <span className="material-symbols-outlined text-secondary">info</span>
                               <p className="text-body-sm text-on-secondary-fixed-variant leading-relaxed">
-                                Our automated background worker will automatically scan and flag items matching your monitoring criteria.
+                                {tr('workerInfo')}
                               </p>
                             </div>
                           </div>
@@ -623,17 +628,17 @@ export default function AddGroupWizardPage() {
                       {step === 2 && (
                         <section className="animate-fade-in space-y-lg">
                           <div className="mb-lg">
-                            <h2 className="text-headline-sm font-bold text-primary mb-xs">Monitor Categories</h2>
+                            <h2 className="text-headline-sm font-bold text-primary mb-xs">{tr('step2Title')}</h2>
                             <p className="text-body-md text-on-surface-variant">
-                              Select which types of posts our classifier should automatically scan and catalog.
+                              {tr('step2Subtitle')}
                             </p>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
                             {[
-                              { key: 'Vehicles', title: 'Cars & Vehicles', desc: 'Sedans, SUVs, Sports Cars' },
-                              { key: 'Electronics', title: 'Consumer Electronics', desc: 'Phones, Cameras, Laptops' },
-                              { key: 'Real Estate', title: 'Real Estate / Land', desc: 'Rentals, Sales, Plots' },
-                              { key: 'Other', title: 'Other Classifieds', desc: 'Tools, Furniture, Collectibles' }
+                              { key: 'Vehicles', title: tr('catVehiclesTitle'), desc: tr('catVehiclesDesc') },
+                              { key: 'Electronics', title: tr('catElectronicsTitle'), desc: tr('catElectronicsDesc') },
+                              { key: 'Real Estate', title: tr('catRealEstateTitle'), desc: tr('catRealEstateDesc') },
+                              { key: 'Other', title: tr('catOtherTitle'), desc: tr('catOtherDesc') }
                             ].map((cat) => (
                               <label
                                 key={cat.key}
@@ -662,18 +667,18 @@ export default function AddGroupWizardPage() {
                       {step === 3 && (
                         <section className="animate-fade-in space-y-lg">
                           <div className="mb-lg">
-                            <h2 className="text-headline-sm font-bold text-primary mb-xs">Import Filtering Rules</h2>
+                            <h2 className="text-headline-sm font-bold text-primary mb-xs">{tr('step3Title')}</h2>
                             <p className="text-body-md text-on-surface-variant">
-                              Define scanning keywords to maintain absolute quality control over live listings.
+                              {tr('step3Subtitle')}
                             </p>
                           </div>
                           <div className="space-y-xl">
                             {/* Group visibility — chosen manually (auto-detection is unreliable for this scraper) */}
                             <div className="space-y-sm">
                               <div>
-                                <span className="text-label-md font-bold block text-primary">Group Visibility</span>
+                                <span className="text-label-md font-bold block text-primary">{tr('groupVisibility')}</span>
                                 <span className="text-body-sm text-on-surface-variant">
-                                  Private groups need you to connect your Facebook to sync.
+                                  {tr('groupVisibilityHint')}
                                 </span>
                               </div>
                               <div className="flex gap-sm">
@@ -686,7 +691,7 @@ export default function AddGroupWizardPage() {
                                       : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
                                   }`}
                                 >
-                                  🔒 Private
+                                  {tr('privateOption')}
                                 </button>
                                 <button
                                   type="button"
@@ -697,7 +702,7 @@ export default function AddGroupWizardPage() {
                                       : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
                                   }`}
                                 >
-                                  🌐 Public
+                                  {tr('publicOption')}
                                 </button>
                               </div>
                             </div>
@@ -705,16 +710,16 @@ export default function AddGroupWizardPage() {
                             <div className="space-y-md">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <span className="text-label-md font-bold block text-primary">Keyword Filter Spans</span>
+                                  <span className="text-label-md font-bold block text-primary">{tr('keywordFilter')}</span>
                                   <span className="text-body-sm text-on-surface-variant">
-                                    Only import posts containing these terms (comma separated).
+                                    {tr('keywordFilterHint')}
                                   </span>
                                 </div>
                                 <span className="material-symbols-outlined text-on-surface-variant">tune</span>
                               </div>
                               <input
                                   className="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all text-body-md bg-surface-container-low/30"
-                                placeholder="e.g. BMW, Toyota, Porsche, Leica"
+                                placeholder={tr('keywordFilterPlaceholder')}
                                 type="text"
                                 value={keywords}
                                 onChange={(e) => setKeywords(e.target.value)}
@@ -723,9 +728,9 @@ export default function AddGroupWizardPage() {
 
                             <div className="flex items-center justify-between p-md bg-surface-container-low rounded-lg">
                               <div>
-                                <span className="text-label-md font-bold block text-primary">Auto-Notify Platform Admin</span>
+                                <span className="text-label-md font-bold block text-primary">{tr('autoNotify')}</span>
                                 <span className="text-body-sm text-on-surface-variant">
-                                  Send email alerts for newly flagged moderation reviews.
+                                  {tr('autoNotifyHint')}
                                 </span>
                               </div>
                               <button
@@ -751,13 +756,13 @@ export default function AddGroupWizardPage() {
                           <div className="w-20 h-20 bg-secondary/10 rounded-full flex items-center justify-center mb-md">
                             <span className="material-symbols-outlined text-[48px] text-secondary animate-bounce">check_circle</span>
                           </div>
-                          <h2 className="text-headline-sm font-bold text-primary">Source Successfully Configured!</h2>
+                          <h2 className="text-headline-sm font-bold text-primary">{tr('step4Title')}</h2>
                           <p className="text-body-md text-on-surface-variant max-w-sm leading-relaxed">
-                            We are initiating your Playwright sync via the Browserless CDP engine. Your moderation queue will populate momentarily.
+                            {tr('step4Subtitle')}
                           </p>
                           <div className="w-full max-w-sm space-y-sm pt-md">
                             <div className="flex justify-between text-label-sm font-semibold text-on-surface-variant">
-                              <span>Parsing feed data in background...</span>
+                              <span>{tr('parsingBackground')}</span>
                               <span>{progress}%</span>
                             </div>
                             <div className="w-full h-3 bg-surface-container-high rounded-full overflow-hidden">
@@ -782,7 +787,7 @@ export default function AddGroupWizardPage() {
                             }`}
                           >
                             <span className="material-symbols-outlined text-[20px]">chevron_left</span>
-                            Back
+                            {tr('back')}
                           </button>
 
                           <button
@@ -791,15 +796,15 @@ export default function AddGroupWizardPage() {
                             className="px-xl py-md rounded-lg bg-primary text-on-primary text-label-md font-bold hover:scale-[0.98] active:scale-95 transition-all flex items-center gap-xs shadow-md"
                           >
                             {submitting ? (
-                              <>Connecting...</>
+                              <>{tr('connecting')}</>
                             ) : step === 3 ? (
                               <>
-                                Complete Setup
+                                {tr('completeSetup')}
                                 <span className="material-symbols-outlined text-[20px]">task_alt</span>
                               </>
                             ) : (
                               <>
-                                Continue
+                                {tr('continueBtn')}
                                 <span className="material-symbols-outlined text-[20px]">chevron_right</span>
                               </>
                             )}
@@ -814,7 +819,7 @@ export default function AddGroupWizardPage() {
                             }}
                             className="px-xl py-md rounded-lg bg-secondary text-on-secondary text-label-md font-bold hover:scale-[0.98] active:scale-95 transition-all flex items-center gap-xs shadow-md"
                           >
-                            Go to Connected Workspace
+                            {tr('goToWorkspace')}
                             <span className="material-symbols-outlined text-[20px]">groups</span>
                           </button>
                         </div>

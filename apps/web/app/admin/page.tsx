@@ -12,6 +12,9 @@ import {
 } from './actions';
 import { approvePostAction, rejectPostAction } from '../actions';
 import { CATEGORIES, matchCategoryGuess } from '../lib/categories';
+import { makeT } from '../lib/i18n';
+import { adminStrings } from '../lib/i18n/admin';
+import { useLang } from '../components/lang-provider';
 
 type Tab = 'users' | 'listings' | 'moderation';
 
@@ -48,6 +51,8 @@ interface PendingPost {
 }
 
 export default function AdminPanel() {
+  const lang = useLang();
+  const tr = makeT(adminStrings, lang);
   const [tab, setTab] = useState<Tab>('users');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [listings, setListings] = useState<AdminListing[]>([]);
@@ -91,27 +96,27 @@ export default function AdminPanel() {
   async function changeRole(userId: string, role: string) {
     const res = await adminSetUserRole(userId, role);
     if (res.success) {
-      say('Role updated.');
+      say(tr('roleUpdated'));
       refresh();
     } else {
-      say(res.error || 'Failed to update role.');
+      say(res.error || tr('roleUpdateFailed'));
     }
   }
 
   async function toggleListing(listing: AdminListing) {
     const res = await adminSetListingActive(listing.id, !listing.isActive);
     if (res.success) {
-      say(listing.isActive ? 'Listing deactivated.' : 'Listing reactivated.');
+      say(listing.isActive ? tr('listingDeactivated') : tr('listingReactivated'));
       refresh();
     } else {
-      say(res.error || 'Failed to update listing.');
+      say(res.error || tr('listingUpdateFailed'));
     }
   }
 
   function openApprove(post: PendingPost) {
     setEditPost(post);
     const firstLine = post.rawText.split('\n')[0] || '';
-    setEditTitle(firstLine.length > 50 ? firstLine.slice(0, 47) + '…' : firstLine || `Listing from ${post.authorName}`);
+    setEditTitle(firstLine.length > 50 ? firstLine.slice(0, 47) + '…' : firstLine || tr('listingFrom').replace('{name}', post.authorName));
     setEditCategory(matchCategoryGuess(post.parsedCategory).slug);
     setEditPrice(post.priceScraped || 0);
     setEditDescription(post.rawText);
@@ -129,23 +134,23 @@ export default function AdminPanel() {
       specs: { scrapedAuthor: editPost.authorName }
     });
     if (res.success) {
-      say('Approved and published.');
+      say(tr('approvedPublished'));
       setEditPost(null);
       refresh();
     } else {
-      say(res.error || 'Approval failed.');
+      say(res.error || tr('approvalFailed'));
     }
   }
 
   async function reject(post: PendingPost) {
-    const reason = window.prompt(`Reject the post from ${post.authorName}? Reason (optional):`) ?? '';
+    const reason = window.prompt(tr('rejectPromptFor').replace('{name}', post.authorName)) ?? '';
     if (reason === null) return;
     const res = await rejectPostAction(post.id, reason);
     if (res.success) {
-      say('Rejected.');
+      say(tr('rejectedToast'));
       refresh();
     } else {
-      say(res.error || 'Rejection failed.');
+      say(res.error || tr('rejectionFailed'));
     }
   }
 
@@ -158,7 +163,7 @@ export default function AdminPanel() {
         <div className="flex items-center gap-lg">
           <Link href="/" className="text-headline-sm font-bold text-primary">GroupMarket</Link>
           <span className="text-label-md font-bold text-on-surface-variant bg-surface-container-low px-md py-1 rounded-full">
-            Admin
+            {tr('adminBadge')}
           </span>
         </div>
         <nav className="flex gap-sm">
@@ -170,7 +175,7 @@ export default function AdminPanel() {
                 tab === t ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
               }`}
             >
-              {t}
+              {tr(t === 'users' ? 'tabUsers' : t === 'listings' ? 'tabListings' : 'tabModeration')}
               {t === 'moderation' && pending.length > 0 && (
                 <span className="ml-xs bg-error text-on-error text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                   {pending.length}
@@ -189,17 +194,17 @@ export default function AdminPanel() {
         )}
 
         {loading ? (
-          <p className="text-on-surface-variant text-body-md p-xl text-center">Loading…</p>
+          <p className="text-on-surface-variant text-body-md p-xl text-center">{tr('loading')}</p>
         ) : tab === 'users' ? (
           <div className="bg-surface rounded-xl border border-outline-variant/30 overflow-x-auto">
             <table className="w-full text-body-sm">
               <thead>
                 <tr className="text-left text-label-sm text-on-surface-variant border-b border-outline-variant/30">
-                  <th className="p-md">User</th>
-                  <th className="p-md">Groups</th>
-                  <th className="p-md">Posts</th>
-                  <th className="p-md">Joined</th>
-                  <th className="p-md">Role</th>
+                  <th className="p-md">{tr('thUser')}</th>
+                  <th className="p-md">{tr('thGroups')}</th>
+                  <th className="p-md">{tr('thPosts')}</th>
+                  <th className="p-md">{tr('thJoined')}</th>
+                  <th className="p-md">{tr('thRole')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -220,27 +225,27 @@ export default function AdminPanel() {
                         onChange={e => changeRole(u.id, e.target.value)}
                         className={input + ' w-auto'}
                       >
-                        <option value="BUYER">Buyer</option>
-                        <option value="SELLER">Seller</option>
-                        <option value="ADMIN">Admin</option>
+                        <option value="BUYER">{tr('roleBuyer')}</option>
+                        <option value="SELLER">{tr('roleSeller')}</option>
+                        <option value="ADMIN">{tr('roleAdmin')}</option>
                       </select>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {users.length === 0 && <p className="p-xl text-center text-on-surface-variant">No users yet.</p>}
+            {users.length === 0 && <p className="p-xl text-center text-on-surface-variant">{tr('noUsers')}</p>}
           </div>
         ) : tab === 'listings' ? (
           <div className="bg-surface rounded-xl border border-outline-variant/30 overflow-x-auto">
             <table className="w-full text-body-sm">
               <thead>
                 <tr className="text-left text-label-sm text-on-surface-variant border-b border-outline-variant/30">
-                  <th className="p-md">Listing</th>
-                  <th className="p-md">Category</th>
-                  <th className="p-md">Seller</th>
-                  <th className="p-md">Price</th>
-                  <th className="p-md">Status</th>
+                  <th className="p-md">{tr('thListing')}</th>
+                  <th className="p-md">{tr('thCategory')}</th>
+                  <th className="p-md">{tr('thSeller')}</th>
+                  <th className="p-md">{tr('thPrice')}</th>
+                  <th className="p-md">{tr('thStatus')}</th>
                   <th className="p-md"></th>
                 </tr>
               </thead>
@@ -261,7 +266,7 @@ export default function AdminPanel() {
                           l.isActive ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'
                         }`}
                       >
-                        {l.isActive ? 'Active' : 'Deactivated'}
+                        {l.isActive ? tr('statusActive') : tr('statusDeactivated')}
                       </span>
                     </td>
                     <td className="p-md text-right">
@@ -269,20 +274,20 @@ export default function AdminPanel() {
                         onClick={() => toggleListing(l)}
                         className="px-md py-1.5 rounded-lg font-label-sm border border-outline-variant hover:bg-surface-container-low transition-colors"
                       >
-                        {l.isActive ? 'Deactivate' : 'Reactivate'}
+                        {l.isActive ? tr('deactivate') : tr('reactivate')}
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {listings.length === 0 && <p className="p-xl text-center text-on-surface-variant">No listings yet.</p>}
+            {listings.length === 0 && <p className="p-xl text-center text-on-surface-variant">{tr('noListings')}</p>}
           </div>
         ) : (
           <div className="space-y-md">
             {pending.length === 0 && (
               <p className="p-xl text-center text-on-surface-variant bg-surface rounded-xl border border-outline-variant/30">
-                No pending posts anywhere. All queues are clear.
+                {tr('noPending')}
               </p>
             )}
             {pending.map(post => (
@@ -290,7 +295,7 @@ export default function AdminPanel() {
                 <div className="flex justify-between items-start gap-md flex-wrap">
                   <div className="min-w-0">
                     <p className="text-label-sm text-on-surface-variant">
-                      {post.groupName} · seller {post.sellerEmail} · {new Date(post.scrapedAt).toLocaleString()}
+                      {post.groupName} · {tr('sellerLabel')} {post.sellerEmail} · {new Date(post.scrapedAt).toLocaleString()}
                     </p>
                     <p className="text-body-md text-primary mt-xs whitespace-pre-line line-clamp-4">{post.rawText}</p>
                   </div>
@@ -299,13 +304,13 @@ export default function AdminPanel() {
                       onClick={() => openApprove(post)}
                       className="px-lg py-2 rounded-lg bg-primary text-on-primary font-label-md"
                     >
-                      Approve…
+                      {tr('approveBtn')}
                     </button>
                     <button
                       onClick={() => reject(post)}
                       className="px-lg py-2 rounded-lg border border-outline-variant text-error font-label-md"
                     >
-                      Reject
+                      {tr('rejectBtn')}
                     </button>
                   </div>
                 </div>
@@ -321,22 +326,22 @@ export default function AdminPanel() {
             className="bg-surface rounded-xl p-lg w-full max-w-lg space-y-md max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-headline-sm font-bold text-primary">Approve on behalf of {editPost.sellerEmail}</h2>
+            <h2 className="text-headline-sm font-bold text-primary">{tr('approveOnBehalf').replace('{email}', editPost.sellerEmail)}</h2>
             <div>
-              <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Title</label>
+              <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">{tr('title')}</label>
               <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className={input} />
             </div>
             <div className="grid grid-cols-2 gap-md">
               <div>
-                <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Category</label>
+                <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">{tr('category')}</label>
                 <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className={input}>
                   {CATEGORIES.map(c => (
-                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                    <option key={c.slug} value={c.slug}>{lang === 'ka' ? c.nameKa : c.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Price (₾)</label>
+                <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">{tr('price')}</label>
                 <input
                   type="number"
                   value={editPrice}
@@ -346,11 +351,11 @@ export default function AdminPanel() {
               </div>
             </div>
             <div>
-              <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Location</label>
+              <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">{tr('location')}</label>
               <input value={editLocation} onChange={e => setEditLocation(e.target.value)} className={input} />
             </div>
             <div>
-              <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Description</label>
+              <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">{tr('description')}</label>
               <textarea
                 value={editDescription}
                 onChange={e => setEditDescription(e.target.value)}
@@ -360,10 +365,10 @@ export default function AdminPanel() {
             </div>
             <div className="flex justify-end gap-sm">
               <button onClick={() => setEditPost(null)} className="px-lg py-2 rounded-lg border border-outline-variant font-label-md">
-                Cancel
+                {tr('cancel')}
               </button>
               <button onClick={submitApprove} className="px-lg py-2 rounded-lg bg-primary text-on-primary font-label-md">
-                Publish listing
+                {tr('publishListing')}
               </button>
             </div>
           </div>

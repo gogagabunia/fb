@@ -1,7 +1,10 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { getListingById, getSimilarListings } from '../../actions';
 import { formatPrice } from '../../lib/format-price';
+import { getLang, LANG_COOKIE, makeT } from '../../lib/i18n';
+import { listingStrings } from '../../lib/i18n/listing';
 import ListingDetailClient from './ListingDetailClient';
 
 interface PageProps {
@@ -16,9 +19,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const listing = await getListingById(id);
 
   if (!listing) {
+    const lang = getLang((await cookies()).get(LANG_COOKIE)?.value);
+    const tr = makeT(listingStrings, lang);
     return {
-      title: 'Listing Not Found | GroupMarket',
-      description: 'The requested listing could not be found on the marketplace.',
+      title: tr('notFoundMetaTitle'),
+      description: tr('notFoundMetaDesc'),
     };
   }
 
@@ -36,7 +41,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ListingDetailPage({ params }: PageProps) {
   const { id } = await params;
-  
+  const lang = getLang((await cookies()).get(LANG_COOKIE)?.value);
+  const tr = makeT(listingStrings, lang);
+
   // 1. Fetch current listing from Postgres
   const listing = await getListingById(id);
 
@@ -50,7 +57,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
               GroupMarket
             </Link>
             <Link href="/marketplace" className="text-label-md text-primary hover:underline">
-              Back to Browse
+              {tr('backToBrowse')}
             </Link>
           </div>
         </nav>
@@ -60,22 +67,22 @@ export default async function ListingDetailPage({ params }: PageProps) {
           <div className="w-20 h-20 bg-error-container/20 rounded-full flex items-center justify-center mb-lg border border-error/10">
             <span className="material-symbols-outlined text-[48px] text-error">info</span>
           </div>
-          <h1 className="text-headline-lg font-bold text-primary mb-md">Listing Not Found</h1>
+          <h1 className="text-headline-lg font-bold text-primary mb-md">{tr('notFoundHeading')}</h1>
           <p className="text-body-md text-on-surface-variant mb-xl leading-relaxed">
-            The listing you are looking for might have been sold, archived, or does not exist in our database.
+            {tr('notFoundBody')}
           </p>
           <Link
             href="/marketplace"
             className="px-xl py-md bg-primary text-on-primary rounded-xl font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm flex items-center gap-xs"
           >
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            Return to Marketplace
+            {tr('returnToMarketplace')}
           </Link>
         </main>
 
         {/* Simple Footer */}
         <footer className="bg-surface border-t border-outline-variant/20 py-md text-center text-xs text-slate-400">
-          © {new Date().getFullYear()} GroupMarket Inc. All rights reserved.
+          {tr('copyright').replace('{year}', String(new Date().getFullYear()))}
         </footer>
       </div>
     );

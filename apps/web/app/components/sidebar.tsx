@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { logoutAction } from '../auth-actions';
+import { makeT } from '../lib/i18n';
+import { sidebarStrings } from '../lib/i18n/sidebar';
+import { useLang } from './lang-provider';
+import { LangSwitcher } from './lang-switcher';
 
 interface User {
   firstName: string | null;
@@ -19,15 +23,17 @@ interface SidebarProps {
 
 export default function Sidebar({ activePage, user, onSync, syncing = false }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const lang = useLang();
+  const tr = makeT(sidebarStrings, lang);
 
   const navLinks = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/dashboard' },
-    { id: 'analytics', label: 'Analytics Panel', icon: 'analytics', href: '/dashboard/analytics' },
-    { id: 'moderation', label: 'Moderation Queue', icon: 'gavel', href: '/dashboard/moderation' },
-    { id: 'add-group', label: 'Connected Groups', icon: 'groups', href: '/add-group' },
-    { id: 'favorites', label: 'Saved Listings', icon: 'favorite', href: '/favorites' },
-    { id: 'settings', label: 'Account Settings', icon: 'settings', href: '/settings' },
-    { id: 'marketplace', label: 'View Marketplace', icon: 'storefront', href: '/marketplace' },
+    { id: 'dashboard', label: tr('navDashboard'), icon: 'dashboard', href: '/dashboard' },
+    { id: 'analytics', label: tr('navAnalytics'), icon: 'analytics', href: '/dashboard/analytics' },
+    { id: 'moderation', label: tr('navModeration'), icon: 'gavel', href: '/dashboard/moderation' },
+    { id: 'add-group', label: tr('navGroups'), icon: 'groups', href: '/add-group' },
+    { id: 'favorites', label: tr('navFavorites'), icon: 'favorite', href: '/favorites' },
+    { id: 'settings', label: tr('navSettings'), icon: 'settings', href: '/settings' },
+    { id: 'marketplace', label: tr('navMarketplace'), icon: 'storefront', href: '/marketplace' },
   ];
 
   const sidebarContent = (
@@ -35,7 +41,7 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
       <div className="mb-xl px-xs py-sm">
         <h1 className="text-headline-sm font-bold text-primary">GroupMarket</h1>
         <p className="text-body-sm text-on-surface-variant font-medium truncate">
-          {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Seller Portal'}
+          {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : tr('sellerPortal')}
         </p>
       </div>
       <nav className="flex-grow flex flex-col gap-xs">
@@ -72,15 +78,18 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
           }`}
         >
           <span className={`material-symbols-outlined ${syncing ? 'animate-spin' : ''}`}>sync</span>
-          {syncing ? 'Parsing Posts...' : 'Sync New Posts'}
+          {syncing ? tr('syncingPosts') : tr('syncNewPosts')}
         </button>
       )}
 
       <div className="border-t border-outline-variant/30 pt-md flex flex-col gap-xs">
-        <span className="text-[11px] text-slate-400 font-semibold uppercase px-md mb-xs">Database Engine</span>
+        <span className="text-[11px] text-slate-400 font-semibold uppercase px-md mb-xs">{tr('databaseEngine')}</span>
         <div className="flex items-center gap-sm px-md py-xs text-xs text-emerald-600 font-bold bg-emerald-50 rounded-lg">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-          Live Serverless DB
+          {tr('liveDb')}
+        </div>
+        <div className="flex justify-center mt-sm">
+          <LangSwitcher current={lang} />
         </div>
         <form action={logoutAction}>
           <button
@@ -88,7 +97,7 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
             className="mt-sm w-full py-sm text-on-surface-variant hover:bg-error-container hover:text-on-error-container rounded-lg text-label-md font-medium transition-all flex items-center justify-center gap-xs"
           >
             <span className="material-symbols-outlined text-[18px]">logout</span>
-            Sign Out
+            {tr('signOut')}
           </button>
         </form>
       </div>
@@ -103,14 +112,14 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
           <button
             onClick={() => setIsOpen(true)}
             className="p-xs hover:bg-surface-container-high rounded-full transition-all text-on-surface"
-            aria-label="Open navigation menu"
+            aria-label={tr('openMenu')}
           >
             <span className="material-symbols-outlined text-[28px]">menu</span>
           </button>
           <h1 className="text-title-lg font-bold text-primary">GroupMarket</h1>
         </div>
         <p className="text-body-sm text-on-surface-variant font-medium max-w-[150px] truncate">
-          {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Seller Portal'}
+          {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : tr('sellerPortal')}
         </p>
       </div>
 
@@ -135,7 +144,7 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
               <button
                 onClick={() => setIsOpen(false)}
                 className="p-xs text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all"
-                aria-label="Close navigation menu"
+                aria-label={tr('closeMenu')}
               >
                 <span className="material-symbols-outlined">close</span>
               </button>

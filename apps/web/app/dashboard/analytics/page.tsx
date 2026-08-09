@@ -1,8 +1,11 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { getAnalyticsSummaryAction } from '../../actions';
 import { getCurrentUser } from '../../auth-actions';
 import Sidebar from '../../components/sidebar';
 import { formatPrice } from '../../lib/format-price';
+import { getLang, LANG_COOKIE, makeT } from '../../lib/i18n';
+import { analyticsStrings } from '../../lib/i18n/analytics';
 
 // Reads the session cookie, so it can never be prerendered. Declaring it
 // here stops Next attempting a static render and logging the failure at build.
@@ -42,6 +45,8 @@ interface AnalyticsSummary {
  */
 export default async function AnalyticsPage() {
   const [summary, user] = await Promise.all([getAnalyticsSummaryAction(), getCurrentUser()]);
+  const lang = getLang((await cookies()).get(LANG_COOKIE)?.value);
+  const tr = makeT(analyticsStrings, lang);
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-sans selection:bg-secondary-container">
@@ -54,9 +59,9 @@ export default async function AnalyticsPage() {
           {/* Header */}
           <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md mb-xl border-b border-outline-variant/20 pb-md">
             <div>
-              <h2 className="text-display-lg font-bold text-primary">Platform Analytics</h2>
+              <h2 className="text-display-lg font-bold text-primary">{tr('title')}</h2>
               <p className="text-body-lg text-on-surface-variant mt-xs">
-                Track visitor actions, click behavior, popular categories, and marketplace engagement.
+                {tr('subtitle')}
               </p>
             </div>
             <Link
@@ -64,7 +69,7 @@ export default async function AnalyticsPage() {
               className="bg-primary text-on-primary px-xl py-md rounded-xl font-bold flex items-center gap-sm shadow-md hover:shadow-lg transition-all active:scale-95 text-label-md"
             >
               <span className="material-symbols-outlined">dashboard</span>
-              Back to Dashboard
+              {tr('backToDashboard')}
             </Link>
           </header>
 
@@ -74,10 +79,10 @@ export default async function AnalyticsPage() {
                 {/* Views Card */}
                 <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm flex items-center justify-between group hover:border-primary/20 transition-all">
                   <div className="space-y-xs">
-                    <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">Total Page Views</span>
+                    <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">{tr('totalPageViews')}</span>
                     <span className="text-display-md font-bold text-primary block">{summary.totalViews.toLocaleString()}</span>
                     <span className="text-[10px] text-slate-400 block">
-                      Across all of your listings
+                      {tr('acrossAllListings')}
                     </span>
                   </div>
                   <div className="w-12 h-12 bg-primary/5 text-primary rounded-xl flex items-center justify-center">
@@ -88,10 +93,12 @@ export default async function AnalyticsPage() {
                 {/* Total Clicks Card */}
                 <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm flex items-center justify-between group hover:border-primary/20 transition-all">
                   <div className="space-y-xs">
-                    <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">Action Clicks</span>
+                    <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">{tr('actionClicks')}</span>
                     <span className="text-display-md font-bold text-primary block">{summary.totalClicks.toLocaleString()}</span>
                     <span className="text-[10px] text-slate-400 block">
-                      {summary.contactClicks.toLocaleString()} contact · {summary.fbClicks.toLocaleString()} Facebook
+                      {tr('clicksBreakdown')
+                        .replace('{contact}', summary.contactClicks.toLocaleString())
+                        .replace('{fb}', summary.fbClicks.toLocaleString())}
                     </span>
                   </div>
                   <div className="w-12 h-12 bg-secondary/5 text-secondary rounded-xl flex items-center justify-center">
@@ -102,10 +109,10 @@ export default async function AnalyticsPage() {
                 {/* CTR Card */}
                 <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm flex items-center justify-between group hover:border-primary/20 transition-all">
                   <div className="space-y-xs">
-                    <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">Click-Through-Rate</span>
+                    <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">{tr('ctr')}</span>
                     <span className="text-display-md font-bold text-secondary block">{summary.ctr.toFixed(1)}%</span>
                     <span className="text-[10px] text-slate-400 block">
-                      Clicks as a share of page views
+                      {tr('ctrSub')}
                     </span>
                   </div>
                   <div className="w-12 h-12 bg-secondary-container/20 text-on-secondary-container rounded-xl flex items-center justify-center">
@@ -116,10 +123,10 @@ export default async function AnalyticsPage() {
                 {/* Contact Clicks Card */}
                 <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm flex items-center justify-between group hover:border-primary/20 transition-all">
                   <div className="space-y-xs">
-                    <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">Inquiries Sent</span>
+                    <span className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider block">{tr('inquiriesSent')}</span>
                     <span className="text-display-md font-bold text-primary block">{summary.contactClicks.toLocaleString()}</span>
                     <span className="text-[10px] text-slate-400 block">
-                      Direct inquiries to sellers
+                      {tr('inquiriesSub')}
                     </span>
                   </div>
                   <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
@@ -135,9 +142,9 @@ export default async function AnalyticsPage() {
                   <div className="mb-md">
                     <h3 className="text-title-lg font-bold text-primary flex items-center gap-xs">
                       <span className="material-symbols-outlined text-secondary">analytics</span>
-                      Weekly Traffic Volume
+                      {tr('weeklyTraffic')}
                     </h3>
-                    <p className="text-body-sm text-on-surface-variant mt-xs">Visual distribution of daily visitor page views.</p>
+                    <p className="text-body-sm text-on-surface-variant mt-xs">{tr('weeklyTrafficSub')}</p>
                   </div>
                   <div className="flex items-end justify-between h-48 pt-lg border-b border-outline-variant/30 px-md relative">
                     {/* Vertical grid lines */}
@@ -147,7 +154,7 @@ export default async function AnalyticsPage() {
 
                     {summary.dailyViews.length === 0 && (
                       <div className="w-full text-center text-body-sm text-on-surface-variant self-center relative z-10">
-                        No page views recorded yet.
+                        {tr('noViewsYet')}
                       </div>
                     )}
 
@@ -158,7 +165,7 @@ export default async function AnalyticsPage() {
                         <div key={day.date} className="flex flex-col items-center flex-grow group relative z-10">
                           {/* Hover Tooltip */}
                           <div className="absolute bottom-full mb-xs bg-primary text-white text-[10px] px-sm py-0.5 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-bold">
-                            {day.views} views
+                            {tr('viewsTooltip').replace('{n}', String(day.views))}
                           </div>
                           {/* The Bar */}
                           <div
@@ -177,14 +184,14 @@ export default async function AnalyticsPage() {
                   <div className="mb-md border-b border-outline-variant/20 pb-sm">
                     <h3 className="text-title-lg font-bold text-primary flex items-center gap-xs">
                       <span className="material-symbols-outlined text-secondary">trending_up</span>
-                      Most Popular Listings
+                      {tr('popularListings')}
                     </h3>
-                    <p className="text-body-sm text-on-surface-variant mt-xs">Ranked by overall page views.</p>
+                    <p className="text-body-sm text-on-surface-variant mt-xs">{tr('popularListingsSub')}</p>
                   </div>
                   <div className="flex-grow space-y-md">
                     {summary.topListings.length === 0 && (
                       <p className="text-body-sm text-on-surface-variant py-lg text-center">
-                        Approve a post to publish your first listing.
+                        {tr('approveFirst')}
                       </p>
                     )}
                     {summary.topListings.map((item, idx) => (
@@ -197,12 +204,12 @@ export default async function AnalyticsPage() {
                             <span className="font-bold text-body-md text-primary block truncate max-w-[150px]" title={item.title}>
                               {item.title}
                             </span>
-                            <span className="text-[10px] text-on-surface-variant font-medium uppercase">{item.categoryRel?.name ?? 'Other'} • {formatPrice(item.price)}</span>
+                            <span className="text-[10px] text-on-surface-variant font-medium uppercase">{item.categoryRel?.name ?? tr('categoryOther')} • {formatPrice(item.price)}</span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className="font-bold text-body-md text-primary block">{item.viewsCount} views</span>
-                          <span className="text-[10px] text-slate-400 font-semibold">{item.clicksCount} clicks</span>
+                          <span className="font-bold text-body-md text-primary block">{tr('viewsCount').replace('{n}', String(item.viewsCount))}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">{tr('clicksCount').replace('{n}', String(item.clicksCount))}</span>
                         </div>
                       </div>
                     ))}

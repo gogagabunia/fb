@@ -7,6 +7,9 @@ import { getCurrentUser, logoutAction } from '../auth-actions';
 import Sidebar from '../components/sidebar';
 import { DashboardSkeleton } from '../components/skeleton';
 import FacebookConnect from '../components/facebook-connect';
+import { makeT } from '../lib/i18n';
+import { dashboardStrings } from '../lib/i18n/dashboard';
+import { useLang } from '../components/lang-provider';
 
 interface ScrapingLog {
   id: string;
@@ -28,6 +31,7 @@ interface FacebookGroup {
 }
 
 export default function DashboardPage() {
+  const tr = makeT(dashboardStrings, useLang());
   const [stats, setStats] = useState({
     connectedGroups: 0,
     pendingPosts: 0,
@@ -54,24 +58,24 @@ export default function DashboardPage() {
   async function handleManualIngest(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedGroup || !rawText.trim()) {
-      showToast('Please select a group and enter listing details.', 'info');
+      showToast(tr('toastSelectGroup'), 'info');
       return;
     }
 
     setIngesting(true);
-    showToast('AI Parsing pasted text block...', 'info');
+    showToast(tr('toastAiParsing'), 'info');
 
     try {
       const result = await ingestRawTextAction(selectedGroup, rawText);
       if (result.success) {
-        showToast('Successfully imported listing! Added to Moderation Queue.', 'success');
+        showToast(tr('toastImportSuccess'), 'success');
         setRawText('');
         loadData();
       } else {
-        showToast(result.error || 'Failed to parse text. Is it a classified ad?', 'error');
+        showToast(result.error || tr('toastParseFailed'), 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Manual ingestion failed.', 'error');
+      showToast(err.message || tr('toastIngestFailed'), 'error');
     } finally {
       setIngesting(false);
     }
@@ -103,23 +107,28 @@ export default function DashboardPage() {
 
   async function handleSync() {
     if (stats.recentGroups.length === 0) {
-      showToast('No active Facebook groups connected. Please add one first!', 'info');
+      showToast(tr('toastNoGroups'), 'info');
       return;
     }
     setSyncing(true);
-    showToast('Starting ingestion and AI parsing...', 'info');
+    showToast(tr('toastSyncStarting'), 'info');
     try {
       // Sync first group for demo/test purposes
       const targetGroup = stats.recentGroups[0];
       const result = await triggerScrapingAction(targetGroup.id);
       if (result.success) {
-        showToast(`Sync Complete! Found ${result.postsFound} posts, imported ${result.listingsImported} listings into PENDING queue.`, 'success');
+        showToast(
+          tr('toastSyncComplete')
+            .replace('{found}', String(result.postsFound))
+            .replace('{imported}', String(result.listingsImported)),
+          'success'
+        );
       } else {
         throw new Error(result.error);
       }
     } catch (error: any) {
       console.error('Scraping failed:', error);
-      showToast(`Scraping failed: ${error.message || 'Unknown error'}. Preserving existing entries.`, 'error');
+      showToast(tr('toastSyncFailed').replace('{error}', error.message || tr('unknownError')), 'error');
     } finally {
       setSyncing(false);
       loadData();
@@ -153,9 +162,9 @@ export default function DashboardPage() {
           {/* Header */}
           <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md mb-xl">
             <div>
-              <h2 className="text-display-lg font-bold text-primary">Overview</h2>
+              <h2 className="text-display-lg font-bold text-primary">{tr('overview')}</h2>
               <p className="text-body-lg text-on-surface-variant mt-xs">
-                Welcome to your GroupMarket admin hub. Monitor scraped updates and approvals here.
+                {tr('welcomeBlurb')}
               </p>
             </div>
             <div className="flex flex-wrap gap-sm">
@@ -164,14 +173,14 @@ export default function DashboardPage() {
                 className="bg-primary text-on-primary px-xl py-md rounded-xl font-bold flex items-center gap-sm shadow-md hover:shadow-lg transition-all active:scale-95 text-label-md"
               >
                 <span className="material-symbols-outlined">analytics</span>
-                View Analytics
+                {tr('viewAnalytics')}
               </Link>
               <Link
                 href="/add-group"
                 className="bg-secondary text-on-secondary px-xl py-md rounded-xl font-bold flex items-center gap-sm shadow-md hover:shadow-lg transition-all active:scale-95 text-label-md"
               >
                 <span className="material-symbols-outlined">add_circle</span>
-                Add New Facebook Group
+                {tr('addNewGroup')}
               </Link>
             </div>
           </header>
@@ -183,32 +192,32 @@ export default function DashboardPage() {
               {/* Stats Bar */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-lg mb-xl">
                 <div className="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-sm flex flex-col">
-                  <span className="text-on-surface-variant text-label-md font-semibold mb-xs">Connected Groups</span>
+                  <span className="text-on-surface-variant text-label-md font-semibold mb-xs">{tr('connectedGroups')}</span>
                   <div className="flex items-center justify-between">
                     <span className="text-display-lg font-bold text-primary">{stats.connectedGroups}</span>
                     <span className="bg-secondary-container text-on-secondary-container px-sm py-xs rounded-full text-label-sm font-bold">
-                      Active Ingest
+                      {tr('activeIngest')}
                     </span>
                   </div>
                 </div>
                 <div className="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-sm flex flex-col">
-                  <span className="text-on-surface-variant text-label-md font-semibold mb-xs">Pending Reviews</span>
+                  <span className="text-on-surface-variant text-label-md font-semibold mb-xs">{tr('pendingReviews')}</span>
                   <div className="flex items-center justify-between">
                     <span className="text-display-lg font-bold text-primary">{stats.pendingPosts}</span>
                     <Link
                       href="/dashboard/moderation"
                       className="bg-error-container text-on-error-container px-sm py-xs rounded-full text-label-sm font-bold hover:scale-[1.02] transition-all"
                     >
-                      Needs Review
+                      {tr('needsReview')}
                     </Link>
                   </div>
                 </div>
                 <div className="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-sm flex flex-col">
-                  <span className="text-on-surface-variant text-label-md font-semibold mb-xs">Live Listings</span>
+                  <span className="text-on-surface-variant text-label-md font-semibold mb-xs">{tr('liveListings')}</span>
                   <div className="flex items-center justify-between">
                     <span className="text-display-lg font-bold text-primary">{stats.approvedListings}</span>
                     <span className="bg-surface-container-high text-on-surface-variant px-sm py-xs rounded-full text-label-sm font-bold">
-                      Public Feed
+                      {tr('publicFeed')}
                     </span>
                   </div>
                 </div>
@@ -223,34 +232,34 @@ export default function DashboardPage() {
                       <div className="w-20 h-20 bg-secondary/10 rounded-full flex items-center justify-center mb-lg">
                         <span className="material-symbols-outlined text-[48px] text-secondary">social_leaderboard</span>
                       </div>
-                      <h3 className="text-headline-md font-bold text-primary mb-sm">Connect your first Facebook group</h3>
+                      <h3 className="text-headline-md font-bold text-primary mb-sm">{tr('connectFirstGroup')}</h3>
                       <p className="text-body-md text-on-surface-variant max-w-md mx-auto mb-xl">
-                        Ingest cars, parts, electronics or any classified post automatically. Connect your first group and configure the scanning terms now.
+                        {tr('connectFirstGroupBody')}
                       </p>
                       <div className="flex gap-md">
                         <Link
                           href="/add-group"
                           className="bg-secondary text-on-secondary px-xl py-md rounded-xl font-bold flex items-center gap-xs shadow-md"
                         >
-                          <span className="material-symbols-outlined">link</span> Add Group Wizard
+                          <span className="material-symbols-outlined">link</span> {tr('addGroupWizard')}
                         </Link>
                       </div>
                     </div>
                   ) : (
                     <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-sm overflow-hidden">
                       <div className="p-xl border-b border-outline-variant/30">
-                        <h3 className="text-headline-sm font-bold text-primary">Scraping Ingestion History</h3>
-                        <p className="text-body-sm text-slate-500 mt-xs">Real-time status of Playwright scraper run cycles.</p>
+                        <h3 className="text-headline-sm font-bold text-primary">{tr('scrapingHistory')}</h3>
+                        <p className="text-body-sm text-slate-500 mt-xs">{tr('scrapingHistorySub')}</p>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                           <thead>
                             <tr className="bg-surface-container-low border-b border-outline-variant/30 text-label-sm font-bold text-on-surface-variant uppercase">
-                              <th className="px-lg py-md">Facebook Group</th>
-                              <th className="px-lg py-md">Scrape Status</th>
-                              <th className="px-lg py-md">Posts Checked</th>
-                              <th className="px-lg py-md">Ingested Ads</th>
-                              <th className="px-lg py-md">Date scanned</th>
+                              <th className="px-lg py-md">{tr('thGroup')}</th>
+                              <th className="px-lg py-md">{tr('thStatus')}</th>
+                              <th className="px-lg py-md">{tr('thPostsChecked')}</th>
+                              <th className="px-lg py-md">{tr('thIngestedAds')}</th>
+                              <th className="px-lg py-md">{tr('thDateScanned')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-outline-variant/20">
@@ -265,7 +274,11 @@ export default function DashboardPage() {
                                         : 'bg-red-50 text-red-700'
                                     }`}
                                   >
-                                    {log.status}
+                                    {log.status === 'SUCCESS'
+                                      ? tr('statusSuccess')
+                                      : log.status === 'FAILED'
+                                        ? tr('statusFailed')
+                                        : tr('statusRunning')}
                                   </span>
                                 </td>
                                 <td className="px-lg py-md font-medium text-slate-600">{log.postsScraped}</td>
@@ -286,10 +299,10 @@ export default function DashboardPage() {
                 <div className="lg:col-span-4 space-y-lg">
                   <div className="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-sm">
                     <h3 className="text-label-md font-bold text-on-tertiary-container uppercase tracking-wider mb-lg">
-                      Active Scanning Sources
+                      {tr('activeSources')}
                     </h3>
                     {stats.recentGroups.length === 0 ? (
-                      <p className="text-body-sm text-slate-400">No active sources connected.</p>
+                      <p className="text-body-sm text-slate-400">{tr('noActiveSources')}</p>
                     ) : (
                       <div className="space-y-md">
                         {stats.recentGroups.map((group) => (
@@ -305,7 +318,7 @@ export default function DashboardPage() {
                                 rel="noreferrer"
                                 className="text-xs text-secondary hover:underline truncate block"
                               >
-                                View Group Source
+                                {tr('viewGroupSource')}
                               </a>
                               <span
                                 className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
@@ -314,7 +327,7 @@ export default function DashboardPage() {
                                     : 'bg-amber-100 text-amber-700'
                                 }`}
                               >
-                                {group.isPublic ? 'Public · syncs without login' : 'Private · needs Facebook'}
+                                {group.isPublic ? tr('publicBadge') : tr('privateBadge')}
                               </span>
                             </div>
                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
@@ -332,16 +345,16 @@ export default function DashboardPage() {
                     <div className="bg-surface-container-lowest border border-outline-variant/30 p-xl rounded-xl shadow-sm space-y-md">
                       <div>
                         <h3 className="text-label-md font-bold text-on-tertiary-container uppercase tracking-wider block">
-                          Manual Feed Ingest
+                          {tr('manualIngest')}
                         </h3>
                         <p className="text-[11px] text-slate-400 mt-xs leading-relaxed">
-                          Copy raw post text from Facebook, paste below, and AI will automatically parse the listing.
+                          {tr('manualIngestSub')}
                         </p>
                       </div>
 
                       <form onSubmit={handleManualIngest} className="space-y-md">
                         <div className="flex flex-col gap-xs">
-                          <label className="text-[11px] font-bold text-slate-500 uppercase">Select Target Group</label>
+                          <label className="text-[11px] font-bold text-slate-500 uppercase">{tr('selectTargetGroup')}</label>
                           <select
                             value={selectedGroup}
                             onChange={(e) => setSelectedGroup(e.target.value)}
@@ -356,14 +369,14 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="flex flex-col gap-xs">
-                          <label className="text-[11px] font-bold text-slate-500 uppercase">Paste Classified Raw Text</label>
+                          <label className="text-[11px] font-bold text-slate-500 uppercase">{tr('pasteRawText')}</label>
                           <textarea
                             value={rawText}
                             onChange={(e) => setRawText(e.target.value)}
                             required
                             rows={4}
                             className="p-md rounded-lg border border-outline-variant/60 focus:border-primary outline-none text-xs font-medium leading-relaxed resize-none bg-white"
-                            placeholder="Example: Selling my 2018 Honda Accord EX-L in pristine condition. Asking $18,500..."
+                            placeholder={tr('rawTextPlaceholder')}
                           />
                         </div>
 
@@ -373,7 +386,7 @@ export default function DashboardPage() {
                           className="w-full py-md bg-secondary text-on-secondary rounded-lg text-label-sm font-bold flex items-center justify-center gap-xs shadow hover:opacity-90 active:scale-[0.98] transition-all"
                         >
                           <span className="material-symbols-outlined text-[16px]">{ingesting ? 'sync' : 'auto_awesome'}</span>
-                          {ingesting ? 'AI Classification...' : 'Import Listing via AI'}
+                          {ingesting ? tr('aiClassifying') : tr('importViaAi')}
                         </button>
                       </form>
                     </div>
@@ -382,12 +395,12 @@ export default function DashboardPage() {
                   {/* Pro Subscription Advert Card */}
                   <div className="bg-primary text-on-primary p-xl rounded-xl shadow-lg relative overflow-hidden">
                     <div className="relative z-10">
-                      <h3 className="text-headline-sm font-bold mb-sm">Enterprise Syncing</h3>
+                      <h3 className="text-headline-sm font-bold mb-sm">{tr('enterpriseSyncing')}</h3>
                       <p className="text-body-sm text-slate-300 mb-lg">
-                        Unlock hourly scrapers, unlimited keywords, proxy tunnels, and instant SMS alerts.
+                        {tr('enterpriseBody')}
                       </p>
                       <button className="bg-secondary text-on-secondary px-lg py-2 rounded-lg text-label-md font-bold shadow-md hover:scale-[1.02] transition-transform">
-                        Upgrade Tier
+                        {tr('upgradeTier')}
                       </button>
                     </div>
                     <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-secondary/20 rounded-full blur-2xl"></div>

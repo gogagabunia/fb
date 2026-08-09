@@ -83,3 +83,16 @@ export type StringKey = keyof typeof strings;
 export function t(key: StringKey, lang: Lang): string {
   return strings[key][lang];
 }
+
+/**
+ * Curried accessor for the per-surface dictionaries in lib/i18n/ — bind the
+ * dictionary and language once, then call tr('key') throughout the page:
+ *
+ *   const tr = makeT(marketplaceStrings, useLang());
+ */
+export function makeT<K extends string>(
+  dict: Record<K, Record<Lang, string>>,
+  lang: Lang
+): (key: K) => string {
+  return key => dict[key][lang];
+}

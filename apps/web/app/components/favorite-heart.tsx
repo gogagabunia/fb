@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toggleFavoriteAction } from '../actions';
+import { useLang } from './lang-provider';
 
 /**
  * The save-heart on a homepage listing card. Same server action as the
@@ -11,6 +12,7 @@ import { toggleFavoriteAction } from '../actions';
  */
 export function FavoriteHeart({ listingId, initiallySaved }: { listingId: string; initiallySaved: boolean }) {
   const [saved, setSaved] = useState(initiallySaved);
+  const lang = useLang();
 
   async function toggle(e: React.MouseEvent) {
     e.preventDefault();
@@ -31,7 +33,11 @@ export function FavoriteHeart({ listingId, initiallySaved }: { listingId: string
     <button
       type="button"
       onClick={toggle}
-      aria-label={saved ? 'Remove from saved listings' : 'Save listing'}
+      aria-label={
+        saved
+          ? lang === 'ka' ? 'შენახულებიდან წაშლა' : 'Remove from saved listings'
+          : lang === 'ka' ? 'განცხადების შენახვა' : 'Save listing'
+      }
       className={`absolute top-2 right-2 w-8 h-8 rounded-full bg-surface/90 shadow-sm flex items-center justify-center transition-colors ${
         saved ? 'text-error' : 'text-on-surface-variant hover:text-error'
       }`}

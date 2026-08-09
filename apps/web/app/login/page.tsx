@@ -3,8 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { loginAction } from '../auth-actions';
+import { makeT } from '../lib/i18n';
+import { authStrings } from '../lib/i18n/auth';
+import { useLang } from '../components/lang-provider';
+import { LangSwitcher } from '../components/lang-switcher';
 
 export default function LoginPage() {
+  const lang = useLang();
+  const tr = makeT(authStrings, lang);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +31,7 @@ export default function LoginPage() {
     } catch (err: any) {
       // redirect() throws a NEXT_REDIRECT error which is expected
       if (err?.digest?.includes('NEXT_REDIRECT')) return;
-      setError('Something went wrong. Please try again.');
+      setError(tr('genericError'));
       setLoading(false);
     }
   }
@@ -38,12 +44,15 @@ export default function LoginPage() {
           <Link className="text-headline-md font-bold text-primary" href="/">
             GroupMarket
           </Link>
-          <Link
-            href="/register"
-            className="px-lg py-2.5 rounded-lg font-label-md text-primary hover:bg-surface-container-low transition-all"
-          >
-            Create Account
-          </Link>
+          <div className="flex items-center gap-md">
+            <LangSwitcher current={lang} />
+            <Link
+              href="/register"
+              className="px-lg py-2.5 rounded-lg font-label-md text-primary hover:bg-surface-container-low transition-all"
+            >
+              {tr('headerCreateAccount')}
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -55,9 +64,9 @@ export default function LoginPage() {
             <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-lg shadow-lg">
               <span className="material-symbols-outlined text-on-primary text-[32px]">storefront</span>
             </div>
-            <h1 className="text-display-lg font-bold text-primary mb-sm">Welcome Back</h1>
+            <h1 className="text-display-lg font-bold text-primary mb-sm">{tr('welcomeBack')}</h1>
             <p className="text-body-md text-on-surface-variant">
-              Sign in to your GroupMarket seller portal
+              {tr('loginSubtitle')}
             </p>
           </div>
 
@@ -73,7 +82,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-lg">
               <div>
                 <label htmlFor="email" className="block text-label-sm font-bold text-on-surface-variant mb-xs">
-                  Email Address
+                  {tr('emailLabel')}
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline text-[20px]">
@@ -93,7 +102,7 @@ export default function LoginPage() {
 
               <div>
                 <label htmlFor="password" className="block text-label-sm font-bold text-on-surface-variant mb-xs">
-                  Password
+                  {tr('passwordLabel')}
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline text-[20px]">
@@ -121,11 +130,11 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
-                    Signing in...
+                    {tr('signingIn')}
                   </>
                 ) : (
                   <>
-                    Sign In
+                    {tr('signIn')}
                     <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                   </>
                 )}
@@ -134,9 +143,9 @@ export default function LoginPage() {
 
             <div className="mt-xl pt-lg border-t border-outline-variant/30 text-center">
               <p className="text-body-sm text-on-surface-variant">
-                Don&apos;t have an account?{' '}
+                {tr('noAccount')}{' '}
                 <Link href="/register" className="text-secondary font-bold hover:underline transition-all">
-                  Create one for free
+                  {tr('createOneFree')}
                 </Link>
               </p>
             </div>

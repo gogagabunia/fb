@@ -9,6 +9,10 @@ import { MarketplaceSkeleton } from '../components/skeleton';
 import { isFeaturedNow } from '../lib/featured';
 import { categoryBySlug } from '../lib/categories';
 import { formatPrice } from '../lib/format-price';
+import { makeT } from '../lib/i18n';
+import { marketplaceStrings } from '../lib/i18n/marketplace';
+import { useLang } from '../components/lang-provider';
+import { LangSwitcher } from '../components/lang-switcher';
 
 interface Listing {
   id: string;
@@ -38,6 +42,8 @@ interface Listing {
 // Wrapped in Suspense below: useSearchParams() opts the page into dynamic
 // rendering, and Next requires a boundary around it for the build.
 function MarketplaceContent() {
+  const lang = useLang();
+  const tr = makeT(marketplaceStrings, lang);
   // Homepage category tiles and the search bar land here as URL params.
   const params = useSearchParams();
   const [listings, setListings] = useState<Listing[]>([]);
@@ -176,25 +182,26 @@ function MarketplaceContent() {
           </div>
           <div className="hidden md:flex items-center gap-lg">
             <Link className="text-primary border-b-2 border-primary pb-1 font-label-md" href="/marketplace">
-              Browse Feed
+              {tr('browseFeed')}
             </Link>
             <Link className="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="/add-group">
-              Sync Groups
+              {tr('syncGroups')}
             </Link>
             <Link className="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="/dashboard">
-              Admin Panel
+              {tr('adminPanel')}
             </Link>
           </div>
           <div className="flex items-center gap-sm md:gap-md">
+            <LangSwitcher current={lang} />
             <Link href="/add-group" className="bg-primary text-on-primary px-sm md:px-lg py-1.5 rounded-lg text-xs md:text-label-md font-bold hover:opacity-90 active:scale-[0.98] transition-all">
-              List Item
+              {tr('listItem')}
             </Link>
             <Link
               href="/dashboard"
               className="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/30 block"
             >
               <img
-                alt="User profile"
+                alt={tr('userProfileAlt')}
                 className="w-full h-full object-cover"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9ThJLNagGxUr6zXYbmk8Gyhb5Ik8Te58DtM10gaj0ZPRFKu54iJXJ5GObeOhfXAQ5fHMTgJo4wxforvJMBo9CjaFmICBMGUA-HeqqzCQamXQ_GcyaA0VGgg3bXgWruO_PIk8r8KqMEtbU9MY8t21tJxP3w7HfyjYXUDXykBx0B7dRsCObIDBvXeYRx_3E7o60Lo9CFVK6xgs6vvMD_yVhD1wNeWycEwlJsx77I33yZH6JgfTKpoy_k8zSxjW7hpHQ3jqhqRXTf6U"
               />
@@ -227,8 +234,8 @@ function MarketplaceContent() {
             {!loading && listings.length > 0 && category === 'All' && !search && !minPrice && !maxPrice && (
               <div className="space-y-lg">
                 <div>
-                  <h2 className="text-headline-md md:text-headline-lg font-bold mb-xs">Premium Inventory</h2>
-                  <p className="text-on-surface-variant text-body-sm md:text-body-md">Curated selection from verified local groups.</p>
+                  <h2 className="text-headline-md md:text-headline-lg font-bold mb-xs">{tr('premiumHeading')}</h2>
+                  <p className="text-on-surface-variant text-body-sm md:text-body-md">{tr('premiumSub')}</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-md md:gap-lg">
@@ -243,22 +250,22 @@ function MarketplaceContent() {
                       <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-transparent to-transparent flex flex-col justify-end p-md md:p-xl">
                         <div className="flex items-center gap-xs mb-sm">
                           <span className="bg-secondary-container text-on-secondary-container text-xs px-sm py-0.5 rounded-full font-bold">
-                            NEW ARRIVAL
+                            {tr('newArrival')}
                           </span>
                           <span className="bg-white/10 backdrop-blur-md text-white text-xs px-sm py-0.5 rounded-full border border-white/20">
-                            {mainFeatured.importedPost?.group.name || 'Verified Group'}
+                            {mainFeatured.importedPost?.group.name || tr('verifiedGroup')}
                           </span>
                         </div>
                         <h3 className="text-white text-headline-lg md:text-display-md font-bold mb-xs truncate">{mainFeatured.title}</h3>
                         <div className="flex justify-between items-end gap-md">
                           <p className="text-white/80 text-body-sm md:text-body-lg">
-                            {formatPrice(mainFeatured.price)} • {mainFeatured.location || 'Local'}
+                            {formatPrice(mainFeatured.price)} • {mainFeatured.location || tr('local')}
                           </p>
                           <Link
                             href={`/listing-detail/${mainFeatured.id}`}
                             className="bg-white text-primary px-md md:px-xl py-2 md:py-md rounded-lg text-xs md:text-label-md font-bold hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center whitespace-nowrap"
                           >
-                            View Detail
+                            {tr('viewDetail')}
                           </Link>
                         </div>
                       </div>
@@ -266,8 +273,8 @@ function MarketplaceContent() {
                   ) : (
                     <div className="lg:col-span-2 bg-gradient-to-br from-primary to-primary-container rounded-xl p-xl flex flex-col justify-center text-center">
                       <span className="material-symbols-outlined text-[64px] text-secondary mb-md">auto_awesome</span>
-                      <h3 className="text-white text-headline-lg font-bold">Premium Experience</h3>
-                      <p className="text-slate-300 max-w-sm mx-auto mt-xs">Auto-parsed, curated items with complete specifications.</p>
+                      <h3 className="text-white text-headline-lg font-bold">{tr('premiumExperience')}</h3>
+                      <p className="text-slate-300 max-w-sm mx-auto mt-xs">{tr('premiumExperienceSub')}</p>
                     </div>
                   )}
 
@@ -285,7 +292,7 @@ function MarketplaceContent() {
                           <div className="flex justify-between items-center mt-xs">
                             <p className="text-white/95 text-label-md font-bold">{formatPrice(sideFeatured.price)}</p>
                             <Link href={`/listing-detail/${sideFeatured.id}`} className="text-white text-label-sm font-semibold underline">
-                              View Detail
+                              {tr('viewDetail')}
                             </Link>
                           </div>
                         </div>
@@ -293,23 +300,23 @@ function MarketplaceContent() {
                     ) : (
                       <div className="h-48 md:h-[210px] bg-surface-container-high rounded-xl p-md flex flex-col justify-center text-center border border-outline-variant/20">
                         <span className="material-symbols-outlined text-primary text-3xl">verified</span>
-                        <h4 className="font-bold text-primary text-label-md mt-sm">Verified Listings Only</h4>
+                        <h4 className="font-bold text-primary text-label-md mt-sm">{tr('verifiedOnly')}</h4>
                       </div>
                     )}
 
                     {/* Sell Yours Card */}
                     <div className="h-48 md:h-[210px] bg-primary-container rounded-xl p-md flex flex-col justify-between border border-outline-variant/20 relative overflow-hidden">
                       <div className="relative z-10">
-                        <h4 className="text-on-primary-container text-title-md font-bold">Sync Facebook Groups</h4>
+                        <h4 className="text-on-primary-container text-title-md font-bold">{tr('syncFacebookGroups')}</h4>
                         <p className="text-on-primary-container/70 text-body-xs mt-xs">
-                          Let AI automatically ingest and format local listing posts for you.
+                          {tr('syncFacebookGroupsSub')}
                         </p>
                       </div>
                       <Link
                         href="/add-group"
                         className="relative z-10 w-full py-2 bg-secondary text-on-secondary rounded-lg text-xs md:text-label-md font-bold hover:opacity-90 transition-all text-center"
                       >
-                        Connect Group
+                        {tr('connectGroup')}
                       </Link>
                       <div className="absolute -bottom-4 -right-4 opacity-10">
                         <span className="material-symbols-outlined text-9xl">trending_up</span>
@@ -325,12 +332,14 @@ function MarketplaceContent() {
               <div className="flex justify-between items-end border-b border-outline-variant/20 pb-sm">
                 <div>
                   <h2 className="text-title-lg md:text-headline-md font-bold">
-                    {category !== 'All' ? `${category} Listings` : 'All Inventory'}
+                    {category !== 'All' ? tr('categoryListings').replace('{c}', category) : tr('allInventory')}
                   </h2>
                   <p className="text-on-surface-variant text-body-xs md:text-body-sm mt-xs">
                     {/* `total` is the full match count, not just what's loaded —
                         showing the loaded count would understate the results. */}
-                    Showing {filteredListings.length} of {total} matching item{total !== 1 ? 's' : ''}
+                    {tr(total !== 1 ? 'showingMany' : 'showingOne')
+                      .replace('{shown}', String(filteredListings.length))
+                      .replace('{total}', String(total))}
                   </p>
                 </div>
               </div>
@@ -340,9 +349,9 @@ function MarketplaceContent() {
               ) : filteredListings.length === 0 ? (
                 <div className="py-xxl flex flex-col items-center justify-center text-center bg-white border border-outline-variant/30 rounded-xl px-md">
                   <span className="material-symbols-outlined text-[64px] text-outline mb-md">storefront</span>
-                  <h3 className="text-title-lg md:text-headline-sm font-bold text-primary mb-xs">No Listings Found</h3>
+                  <h3 className="text-title-lg md:text-headline-sm font-bold text-primary mb-xs">{tr('noListingsFound')}</h3>
                   <p className="text-body-sm md:text-body-md text-on-surface-variant max-w-sm">
-                    Try modifying your search query, price range, or category filter.
+                    {tr('noListingsHint')}
                   </p>
                 </div>
               ) : (
@@ -361,6 +370,7 @@ function MarketplaceContent() {
                         <div className="absolute top-sm right-sm">
                           <button
                             onClick={() => handleToggleFavorite(post.id, post.title)}
+                            aria-label={tr('saveListingAria')}
                             className={`bg-white/90 backdrop-blur-md p-xs rounded-full shadow-sm transition-colors flex items-center justify-center hover:scale-105 active:scale-95 ${
                               favoritedIds.includes(post.id) ? 'text-error' : 'text-on-surface-variant hover:text-error'
                             }`}
@@ -391,14 +401,14 @@ function MarketplaceContent() {
                             {post.description}
                           </p>
                           <p className="text-slate-400 text-[11px] mt-2 truncate">
-                            📍 {post.location || 'Local'} • {post.importedPost?.group.name || 'Facebook'}
+                            📍 {post.location || tr('local')} • {post.importedPost?.group.name || 'Facebook'}
                           </p>
                         </div>
                         <Link
                           href={`/listing-detail/${post.id}`}
                           className="w-full py-2 border border-primary text-primary hover:bg-primary hover:text-on-primary rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center mt-auto"
                         >
-                          View Listing
+                          {tr('viewListing')}
                         </Link>
                       </div>
                     </div>
@@ -417,7 +427,7 @@ function MarketplaceContent() {
                   disabled={loadingMore}
                   className="flex items-center gap-sm px-xl py-2 bg-surface-container-high text-primary rounded-full text-xs font-bold hover:bg-surface-container-highest transition-all disabled:opacity-60"
                 >
-                  <span>{loadingMore ? 'Loading…' : 'Explore More Listings'}</span>
+                  <span>{loadingMore ? tr('loadingMore') : tr('exploreMore')}</span>
                   <span className="material-symbols-outlined text-[16px]">
                     {loadingMore ? 'progress_activity' : 'expand_more'}
                   </span>

@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { getFavoritedIdsAction, toggleFavoriteAction, recordAnalyticsEventAction } from '../../actions';
 import { isFeaturedNow } from '../../lib/featured';
 import { formatPrice } from '../../lib/format-price';
+import { categoryBySlug } from '../../lib/categories';
+import { makeT } from '../../lib/i18n';
+import { listingStrings } from '../../lib/i18n/listing';
+import { useLang } from '../../components/lang-provider';
 
 interface Listing {
   id: string;
@@ -40,6 +44,14 @@ interface ListingDetailClientProps {
 }
 
 export default function ListingDetailClient({ listing, similarListings }: ListingDetailClientProps) {
+  const lang = useLang();
+  const tr = makeT(listingStrings, lang);
+  // Display-only category name: the fixed category list carries the Georgian
+  // name; hrefs and the vehicles check keep using the stored English name.
+  const categoryDisplay = (l: Listing) => {
+    const def = l.categoryRel ? categoryBySlug(l.categoryRel.slug) : undefined;
+    return lang === 'ka' && def ? def.nameKa : l.category;
+  };
   const defaultFallback = 'https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?auto=format&fit=crop&q=80&w=1200';
   
   // Setup images array, ensure we have at least 1 image and up to 4 for thumbnails
@@ -61,7 +73,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
       setToastType('success');
       // The promotion itself is applied by the Stripe webhook once payment
       // settles, which can land a moment after this redirect.
-      setToastMessage('Payment received — your listing is being featured.');
+      setToastMessage(tr('paymentReceived'));
       setTimeout(() => setToastMessage(null), 4000);
     }
   }, []);
@@ -82,14 +94,14 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
         // rejects unauthenticated callers, non-owners, and unconfigured payments.
         console.error('Failed to create checkout session:', data.error);
         setToastType('error');
-        setToastMessage(data.error || 'Could not start checkout. Please try again.');
+        setToastMessage(data.error || tr('checkoutFailed'));
         setTimeout(() => setToastMessage(null), 5000);
         setPromoting(false);
       }
     } catch (err) {
       console.error('Promotion failed:', err);
       setToastType('error');
-      setToastMessage('Could not start checkout. Please try again.');
+      setToastMessage(tr('checkoutFailed'));
       setTimeout(() => setToastMessage(null), 5000);
       setPromoting(false);
     }
@@ -124,7 +136,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
         const nextSavedState = result.favorited ?? !saved;
         setSaved(nextSavedState);
         setToastType(nextSavedState ? 'success' : 'info');
-        setToastMessage(nextSavedState ? 'Added to Saved Listings!' : 'Removed from Saved Listings.');
+        setToastMessage(nextSavedState ? tr('addedToSaved') : tr('removedFromSaved'));
         setTimeout(() => setToastMessage(null), 3000);
       } else {
         console.error('Failed to toggle favorite:', result.error);
@@ -147,7 +159,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
   // Time format helper
   const postedDate = listing.createdAt ? new Date(listing.createdAt) : new Date();
   const daysAgo = Math.max(1, Math.round((Date.now() - postedDate.getTime()) / (1000 * 60 * 60 * 24)));
-  const dateString = daysAgo === 1 ? 'Posted 1 day ago' : `Posted ${daysAgo} days ago`;
+  const dateString = daysAgo === 1 ? tr('postedOneDay') : tr('postedDays').replace('{n}', String(daysAgo));
 
   // Share button copy function
   const handleShare = () => {
@@ -163,7 +175,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
         <div className="fixed bottom-lg right-lg z-50 animate-bounce">
           <div className="px-md py-sm rounded-lg shadow-lg flex items-center gap-sm bg-primary text-white">
             <span className="material-symbols-outlined">link</span>
-            <span className="text-label-md font-medium">Link copied to clipboard!</span>
+            <span className="text-label-md font-medium">{tr('linkCopied')}</span>
           </div>
         </div>
       )}
@@ -190,26 +202,26 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
             </Link>
             <nav className="hidden md:flex gap-lg items-center">
               <Link className="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="/marketplace">
-                Browse Feed
+                {tr('browseFeed')}
               </Link>
               <Link className="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="/add-group">
-                Sync Groups
+                {tr('syncGroups')}
               </Link>
               <Link className="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="/dashboard">
-                Admin Panel
+                {tr('adminPanel')}
               </Link>
             </nav>
           </div>
           <div className="flex items-center gap-sm md:gap-md">
             <Link href="/add-group" className="bg-primary text-on-primary px-sm md:px-lg py-1.5 rounded-lg text-xs md:text-label-md font-bold hover:opacity-90 active:scale-[0.98] transition-all">
-              List Item
+              {tr('listItem')}
             </Link>
             <Link
               href="/dashboard"
               className="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/30 block"
             >
               <img
-                alt="User profile"
+                alt={tr('userProfileAlt')}
                 className="w-full h-full object-cover"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9ThJLNagGxUr6zXYbmk8Gyhb5Ik8Te58DtM10gaj0ZPRFKu54iJXJ5GObeOhfXAQ5fHMTgJo4wxforvJMBo9CjaFmICBMGUA-HeqqzCQamXQ_GcyaA0VGgg3bXgWruO_PIk8r8KqMEtbU9MY8t21tJxP3w7HfyjYXUDXykBx0B7dRsCObIDBvXeYRx_3E7o60Lo9CFVK6xgs6vvMD_yVhD1wNeWycEwlJsx77I33yZH6JgfTKpoy_k8zSxjW7hpHQ3jqhqRXTf6U"
               />
@@ -217,7 +229,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="md:hidden p-xs text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all"
-              aria-label="Toggle menu"
+              aria-label={tr('toggleMenu')}
             >
               <span className="material-symbols-outlined text-[24px]">
                 {menuOpen ? 'close' : 'menu'}
@@ -235,21 +247,21 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                 className="text-primary font-bold text-headline-sm hover:text-secondary transition-colors py-xs"
                 href="/marketplace"
               >
-                Browse Feed
+                {tr('browseFeed')}
               </Link>
               <Link
                 onClick={() => setMenuOpen(false)}
                 className="text-on-surface-variant text-headline-sm hover:text-primary transition-colors py-xs"
                 href="/add-group"
               >
-                Sync Groups
+                {tr('syncGroups')}
               </Link>
               <Link
                 onClick={() => setMenuOpen(false)}
                 className="text-on-surface-variant text-headline-sm hover:text-primary transition-colors py-xs"
                 href="/dashboard"
               >
-                Admin Panel
+                {tr('adminPanel')}
               </Link>
             </nav>
           </div>
@@ -261,10 +273,10 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
         {/* Breadcrumb & Action Row */}
         <div className="flex flex-col sm:flex-row gap-md justify-between sm:items-center mb-lg">
           <div className="flex items-center gap-xs text-on-surface-variant font-label-md text-label-md">
-            <Link className="hover:text-primary" href="/dashboard">Home</Link>
+            <Link className="hover:text-primary" href="/dashboard">{tr('home')}</Link>
             <span className="material-symbols-outlined text-[16px]">chevron_right</span>
             <Link className="hover:text-primary capitalize" href={`/marketplace?category=${encodeURIComponent(listing.category)}`}>
-              {listing.category}
+              {categoryDisplay(listing)}
             </Link>
             <span className="material-symbols-outlined text-[16px]">chevron_right</span>
             <span className="text-on-surface truncate max-w-[200px] md:max-w-xs">{listing.title}</span>
@@ -274,7 +286,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
               onClick={handleShare}
               className="flex items-center gap-xs px-md py-xs rounded-lg border border-outline-variant hover:bg-surface-container-low transition-all text-label-md font-label-md"
             >
-              <span className="material-symbols-outlined">share</span> Share
+              <span className="material-symbols-outlined">share</span> {tr('share')}
             </button>
             <button
               onClick={handleToggleFavorite}
@@ -287,7 +299,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
               <span className={`material-symbols-outlined ${saved ? 'text-secondary' : ''}`} style={{ fontVariationSettings: saved ? "'FILL' 1" : "'FILL' 0" }}>
                 favorite
               </span>
-              {saved ? 'Saved' : 'Save'}
+              {saved ? tr('saved') : tr('save')}
             </button>
           </div>
         </div>
@@ -315,7 +327,11 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                     }`}
                     onClick={() => setActiveImage(img)}
                   >
-                    <img className="w-full h-full object-cover" src={img} alt={`${listing.title} thumbnail ${idx + 1}`} />
+                    <img
+                      className="w-full h-full object-cover"
+                      src={img}
+                      alt={tr('thumbnailAlt').replace('{title}', listing.title).replace('{n}', String(idx + 1))}
+                    />
                   </button>
                 ))}
               </div>
@@ -323,9 +339,9 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
 
             {/* Description Section */}
             <div className="pt-xl border-t border-outline-variant/30 mt-xxl">
-              <h2 className="font-headline-md text-headline-md mb-md">Description</h2>
+              <h2 className="font-headline-md text-headline-md mb-md">{tr('description')}</h2>
               <div className="text-on-surface-variant font-body-md text-body-md leading-relaxed whitespace-pre-line space-y-md">
-                {listing.description || 'No description available for this listing.'}
+                {listing.description || tr('noDescription')}
               </div>
             </div>
           </div>
@@ -338,14 +354,14 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                 <div className="flex justify-between items-start mb-xs">
                   <span className="text-headline-lg md:text-display-lg font-bold text-primary">{formattedPrice}</span>
                   <span className="bg-secondary-container text-on-secondary-container px-sm py-1 rounded-full font-label-sm text-label-sm">
-                    {listing.isActive ? 'Active' : 'Archived'}
+                    {listing.isActive ? tr('statusActive') : tr('statusArchived')}
                   </span>
                 </div>
                 <h1 className="text-headline-lg font-headline-lg mb-md leading-tight">{listing.title}</h1>
                 <div className="flex items-center gap-sm mb-xl text-on-surface-variant">
                   <span className="flex items-center gap-xs font-label-md text-label-md">
                     <span className="material-symbols-outlined text-[18px]">location_on</span>
-                    <span>{listing.location || 'Remote'}</span>
+                    <span>{listing.location || tr('remote')}</span>
                   </span>
                   <span className="w-1 h-1 bg-outline-variant rounded-full"></span>
                   <span className="font-label-md text-label-md">{dateString}</span>
@@ -355,27 +371,27 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                 {listing.category.toLowerCase() === 'vehicles' ? (
                   <div className="grid grid-cols-2 gap-sm md:gap-md mb-xl">
                     <div className="bg-surface-container-low p-md rounded-lg">
-                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Year</span>
+                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">{tr('year')}</span>
                       <span className="font-headline-sm text-headline-sm">{year}</span>
                     </div>
                     <div className="bg-surface-container-low p-md rounded-lg">
-                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Mileage</span>
+                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">{tr('mileage')}</span>
                       <span className="font-headline-sm text-headline-sm">{mileage}</span>
                     </div>
                     <div className="bg-surface-container-low p-md rounded-lg">
-                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Fuel</span>
+                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">{tr('fuel')}</span>
                       <span className="font-headline-sm text-headline-sm">{fuel}</span>
                     </div>
                     <div className="bg-surface-container-low p-md rounded-lg">
-                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Transmission</span>
+                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">{tr('transmission')}</span>
                       <span className="font-headline-sm text-headline-sm">{transmission}</span>
                     </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-sm md:gap-md mb-xl">
                     <div className="bg-surface-container-low p-md rounded-lg col-span-2">
-                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">Category</span>
-                      <span className="font-headline-sm text-headline-sm capitalize">{listing.category}</span>
+                      <span className="text-on-surface-variant font-label-sm text-label-sm block mb-xs">{tr('category')}</span>
+                      <span className="font-headline-sm text-headline-sm capitalize">{categoryDisplay(listing)}</span>
                     </div>
                   </div>
                 )}
@@ -391,7 +407,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                     }}
                     className="w-full bg-primary text-on-primary py-md rounded-lg font-headline-sm text-headline-sm hover:opacity-95 transition-all flex items-center justify-center gap-md active:scale-[0.98]"
                   >
-                    <span className="material-symbols-outlined">mail</span> Contact Seller
+                    <span className="material-symbols-outlined">mail</span> {tr('contactSeller')}
                   </a>
                   <a
                     href={listing.originalPostUrl || '#'}
@@ -405,7 +421,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
                       social_leaderboard
                     </span>
-                    View on Facebook
+                    {tr('viewOnFacebook')}
                   </a>
                 </div>
               </div>
@@ -418,46 +434,46 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                   </div>
                   <div>
                     <h3 className="font-headline-sm text-headline-sm">
-                      {listing.importedPost?.authorName || 'Verified Member'}
+                      {listing.importedPost?.authorName || tr('verifiedMember')}
                     </h3>
                     <div className="flex items-center gap-xs text-secondary font-label-md text-label-md">
                       <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                         verified
                       </span>
-                      Verified Seller
+                      {tr('verifiedSeller')}
                     </div>
                   </div>
                 </div>
                 <div className="flex justify-between items-center py-sm border-t border-outline-variant/20">
-                  <span className="text-on-surface-variant font-body-sm text-body-sm">Facebook Source Group</span>
+                  <span className="text-on-surface-variant font-body-sm text-body-sm">{tr('sourceGroup')}</span>
                   <span className="font-label-md text-label-md text-primary max-w-[200px] truncate block" title={listing.importedPost?.group.name}>
-                    {listing.importedPost?.group.name || 'Facebook Group'}
+                    {listing.importedPost?.group.name || tr('facebookGroup')}
                   </span>
                 </div>
                 <Link
                   className="block text-center mt-md text-primary font-label-md text-label-md hover:underline"
                   href="/marketplace"
                 >
-                  View Other Listings
+                  {tr('viewOtherListings')}
                 </Link>
               </div>
 
               {/* Promotion Monetization Card */}
               <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 bg-secondary-container text-on-secondary-container text-[10px] px-sm py-1 rounded-bl-lg font-extrabold tracking-wider">
-                  SPONSOR
+                  {tr('sponsor')}
                 </div>
                 <h3 className="font-bold text-title-md text-primary flex items-center gap-xs mb-xs">
                   <span className="material-symbols-outlined text-secondary">workspace_premium</span>
-                  Promote Listing
+                  {tr('promoteListing')}
                 </h3>
                 <p className="text-body-xs text-on-surface-variant leading-relaxed mb-md">
-                  Boost your listing's visibility! Make it featured to place it in the asymmetric bento grid at the top of the Marketplace.
+                  {tr('promoteDescription')}
                 </p>
                 {isFeaturedNow(listing) || promotedState ? (
                   <div className="flex items-center gap-xs py-sm justify-center bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-label-sm font-bold">
                     <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
-                    Featured Listing Active
+                    {tr('featuredActive')}
                   </div>
                 ) : (
                   <button
@@ -466,7 +482,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                     className="w-full bg-secondary text-on-secondary py-sm rounded-lg text-label-sm font-bold hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-xs shadow"
                   >
                     <span className="material-symbols-outlined text-[18px]">{promoting ? 'sync' : 'bolt'}</span>
-                    {promoting ? 'Redirecting...' : 'Promote for $19.99'}
+                    {promoting ? tr('redirecting') : tr('promotePrice')}
                   </button>
                 )}
               </div>
@@ -476,7 +492,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                 <div className="h-48 w-full bg-surface-container relative">
                   <img
                     className="w-full h-full object-cover grayscale opacity-60"
-                    alt="Map placeholder"
+                    alt={tr('mapAlt')}
                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsfpI1utSeKWIhUUXruaSPyJeh7ptC3i8748zj9gKoBQgvv6-x9NSxSZGX4T_teAlVim5w8ip347RRa3imIcs5QdVfv20pjughxSAoB1HJEg2R1iCodCjxekUxdJwu6bIG_UJkDqzttgYDZrbNUjjq2Dmtfby6SZcV1Sa2ymf-sp_8DZS5MVnvaqIbQfmfYn2JQVOfPkymHWH1PcEvOif03t0mPhKeMQcqgI_e09wbZwmaJXaJAyYJTZ9vo24CMvgNIHnoyyuCtA0"
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -488,8 +504,8 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                   </div>
                 </div>
                 <div className="p-md">
-                  <p className="text-on-surface font-label-md text-label-md">Location: {listing.location || 'Remote'}</p>
-                  <p className="text-on-surface-variant font-body-sm text-body-sm">Detailed coordinates provided upon inquiry.</p>
+                  <p className="text-on-surface font-label-md text-label-md">{tr('locationLabel').replace('{loc}', listing.location || tr('remote'))}</p>
+                  <p className="text-on-surface-variant font-body-sm text-body-sm">{tr('coordinatesNote')}</p>
                 </div>
               </div>
             </div>
@@ -500,12 +516,12 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
         {similarListings.length > 0 && (
           <section className="mt-xxl pt-xxl border-t border-outline-variant/30">
             <div className="flex justify-between items-center mb-xl">
-              <h2 className="font-headline-lg text-headline-lg">Similar High-End Listings</h2>
+              <h2 className="font-headline-lg text-headline-lg">{tr('similarHeading')}</h2>
               <Link
                 className="text-primary font-label-md text-label-md hover:underline flex items-center gap-xs"
                 href="/marketplace"
               >
-                View all <span className="material-symbols-outlined">arrow_forward</span>
+                {tr('viewAll')} <span className="material-symbols-outlined">arrow_forward</span>
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
@@ -525,7 +541,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                     </div>
                     <div className="p-md">
                       <span className="text-on-surface-variant font-label-sm text-label-sm mb-1 block capitalize">
-                        {sim.category}
+                        {categoryDisplay(sim)}
                       </span>
                       <h4 className="font-headline-sm text-headline-sm mb-xs group-hover:text-primary transition-colors truncate">
                         {sim.title}
@@ -538,7 +554,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
                   <div className="p-md pt-0">
                     <div className="flex items-center gap-xs text-on-surface-variant font-label-sm text-label-sm">
                       <span className="material-symbols-outlined text-[16px]">location_on</span>
-                      <span className="truncate">{sim.location || 'Remote'}</span>
+                      <span className="truncate">{sim.location || tr('remote')}</span>
                     </div>
                   </div>
                 </Link>
@@ -554,28 +570,28 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
           <div className="col-span-2">
             <span className="text-headline-md font-headline-md font-bold text-primary mb-md block">GroupMarket</span>
             <p className="text-on-surface-variant font-body-md text-body-md max-w-md">
-              The premium marketplace for niche Facebook groups and automotive enthusiasts. Experience the power of social commerce with professional tools and verification.
+              {tr('footerBlurb')}
             </p>
           </div>
           <div>
-            <h5 className="font-headline-sm text-headline-sm mb-md">Marketplace</h5>
+            <h5 className="font-headline-sm text-headline-sm mb-md">{tr('footerMarketplace')}</h5>
             <ul className="space-y-sm text-on-surface-variant font-body-sm text-body-sm">
-              <li><Link className="hover:text-primary transition-colors" href="/marketplace">Browse Feed</Link></li>
-              <li><Link className="hover:text-primary transition-colors" href="/add-group">Sync Groups</Link></li>
-              <li><Link className="hover:text-primary transition-colors" href="/dashboard">Seller Dashboard</Link></li>
+              <li><Link className="hover:text-primary transition-colors" href="/marketplace">{tr('browseFeed')}</Link></li>
+              <li><Link className="hover:text-primary transition-colors" href="/add-group">{tr('syncGroups')}</Link></li>
+              <li><Link className="hover:text-primary transition-colors" href="/dashboard">{tr('sellerDashboard')}</Link></li>
             </ul>
           </div>
           <div>
-            <h5 className="font-headline-sm text-headline-sm mb-md">Resources</h5>
+            <h5 className="font-headline-sm text-headline-sm mb-md">{tr('footerResources')}</h5>
             <ul className="space-y-sm text-on-surface-variant font-body-sm text-body-sm">
-              <li><a className="hover:text-primary transition-colors" href="#">Trust &amp; Safety</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Help Center</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Terms of Service</a></li>
+              <li><a className="hover:text-primary transition-colors" href="#">{tr('trustSafety')}</a></li>
+              <li><a className="hover:text-primary transition-colors" href="#">{tr('helpCenter')}</a></li>
+              <li><a className="hover:text-primary transition-colors" href="#">{tr('termsOfService')}</a></li>
             </ul>
           </div>
         </div>
         <div className="max-w-container-max mx-auto px-lg mt-xxl pt-lg border-t border-outline-variant/20 flex flex-col md:flex-row justify-between items-center gap-md">
-          <p className="text-on-surface-variant font-label-sm text-label-sm">© 2026 GroupMarket Inc. All rights reserved.</p>
+          <p className="text-on-surface-variant font-label-sm text-label-sm">{tr('copyright').replace('{year}', '2026')}</p>
           <div className="flex gap-lg">
             <span className="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">language</span>
             <span className="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">share</span>

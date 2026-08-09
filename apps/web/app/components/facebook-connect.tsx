@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { getFbConnectionStatus, saveFacebookSession, disconnectFacebookSession } from '../actions';
+import { makeT } from '../lib/i18n';
+import { fbConnectStrings } from '../lib/i18n/fbconnect';
+import { useLang } from './lang-provider';
 
 type Status = 'ACTIVE' | 'EXPIRED' | 'NONE';
 
@@ -14,6 +17,7 @@ type Status = 'ACTIVE' | 'EXPIRED' | 'NONE';
  * display the stored cookies back.
  */
 export default function FacebookConnect() {
+  const tr = makeT(fbConnectStrings, useLang());
   const [status, setStatus] = useState<Status>('NONE');
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +47,7 @@ export default function FacebookConnect() {
       setOpen(false);
       await refresh();
     } else {
-      setMsg(res.error || 'Failed to save session.');
+      setMsg(res.error || tr('saveFailed'));
     }
   }
 
@@ -53,18 +57,18 @@ export default function FacebookConnect() {
   }
 
   const badge = {
-    ACTIVE: { label: 'Facebook connected', color: '#0a7d33', bg: '#e6f5eb' },
-    EXPIRED: { label: 'Reconnect needed', color: '#b23c17', bg: '#fdeae2' },
-    NONE: { label: 'Not connected', color: '#5f6368', bg: '#f1f3f4' },
+    ACTIVE: { label: tr('badgeActive'), color: '#0a7d33', bg: '#e6f5eb' },
+    EXPIRED: { label: tr('badgeExpired'), color: '#b23c17', bg: '#fdeae2' },
+    NONE: { label: tr('badgeNone'), color: '#5f6368', bg: '#f1f3f4' },
   }[status];
 
   return (
     <div style={{ border: '1px solid #e0e0e0', borderRadius: 12, padding: 20, background: '#fff' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Facebook Connection</h3>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{tr('title')}</h3>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#5f6368' }}>
-            Required to sync <strong>private</strong> groups. Public groups sync without it.
+            {tr('subtitleBefore')} <strong>{tr('subtitlePrivate')}</strong> {tr('subtitleAfter')}
           </p>
         </div>
         {!loading && (
@@ -75,7 +79,7 @@ export default function FacebookConnect() {
       </div>
 
       {status === 'ACTIVE' && savedAt && (
-        <p style={{ fontSize: 12, color: '#5f6368', marginTop: 12 }}>Connected since {savedAt}.</p>
+        <p style={{ fontSize: 12, color: '#5f6368', marginTop: 12 }}>{tr('connectedSince').replace('{date}', savedAt)}</p>
       )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
@@ -83,14 +87,14 @@ export default function FacebookConnect() {
           onClick={() => { setOpen(!open); setMsg(null); }}
           style={{ background: '#1877f2', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
         >
-          {status === 'ACTIVE' ? 'Reconnect Facebook' : 'Connect Facebook'}
+          {status === 'ACTIVE' ? tr('reconnect') : tr('connect')}
         </button>
         {status === 'ACTIVE' && (
           <button
             onClick={handleDisconnect}
             style={{ background: '#fff', color: '#b23c17', border: '1px solid #e0c0b5', borderRadius: 8, padding: '9px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
           >
-            Disconnect
+            {tr('disconnect')}
           </button>
         )}
       </div>
@@ -101,23 +105,21 @@ export default function FacebookConnect() {
               hand is the fallback for when it can't be installed. */}
           <div style={{ background: '#f1f6ff', border: '1px solid #d3e2fb', borderRadius: 8, padding: 12, marginBottom: 14 }}>
             <p style={{ fontSize: 13, color: '#1a3d6d', margin: 0, fontWeight: 600 }}>
-              Easier: use the browser extension
+              {tr('extensionEasier')}
             </p>
             <p style={{ fontSize: 12, color: '#3c5a80', margin: '4px 0 8px' }}>
-              One click, no copying. Takes about a minute to set up.
+              {tr('extensionDesc')}
             </p>
             <a
               href="/connect-facebook"
               style={{ fontSize: 13, color: '#1877f2', fontWeight: 600, textDecoration: 'underline' }}
             >
-              Download and install instructions →
+              {tr('extensionLink')}
             </a>
           </div>
 
           <p style={{ fontSize: 13, color: '#3c4043', margin: '0 0 8px' }}>
-            Or paste your Facebook session cookies by hand (JSON export from a
-            cookie-export extension while logged into facebook.com). Stored
-            encrypted and only used to read your groups.
+            {tr('pasteHelp')}
           </p>
           <textarea
             value={cookieText}
@@ -133,7 +135,7 @@ export default function FacebookConnect() {
               disabled={saving || !cookieText.trim()}
               style={{ background: saving ? '#9bbcf0' : '#1877f2', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontWeight: 600, fontSize: 14, cursor: saving ? 'default' : 'pointer' }}
             >
-              {saving ? 'Saving…' : 'Save session'}
+              {saving ? tr('saving') : tr('saveSession')}
             </button>
           </div>
         </div>

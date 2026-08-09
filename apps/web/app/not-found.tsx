@@ -1,8 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { makeT } from './lib/i18n';
+import { miscStrings } from './lib/i18n/misc';
+import { useLang } from './components/lang-provider';
 
 export default function NotFound() {
+  const tr = makeT(miscStrings, useLang());
   return (
     <div className="min-h-screen bg-background text-on-surface font-sans selection:bg-secondary-container flex flex-col justify-between">
       {/* Header */}
@@ -12,7 +16,7 @@ export default function NotFound() {
             GroupMarket
           </Link>
           <Link href="/marketplace" className="text-on-surface-variant hover:text-primary transition-colors font-label-md">
-            Browse Marketplace
+            {tr('browseMarketplace')}
           </Link>
         </div>
       </nav>
@@ -34,10 +38,10 @@ export default function NotFound() {
 
           <div className="space-y-sm">
             <h1 className="text-display-md md:text-display-lg font-extrabold text-primary tracking-tight leading-tight">
-              Lost in the Grid?
+              {tr('nfTitle')}
             </h1>
             <p className="text-body-lg text-on-surface-variant max-w-md mx-auto leading-relaxed">
-              We couldn't find the page or listing you were searching for. It may have been relocated, archived, or deleted.
+              {tr('nfBody')}
             </p>
           </div>
 
@@ -45,10 +49,10 @@ export default function NotFound() {
           <div className="glass-card p-xl rounded-2xl shadow-lg border border-outline-variant/30 text-left space-y-md">
             <h3 className="text-title-md font-bold text-primary flex items-center gap-xs">
               <span className="material-symbols-outlined text-secondary">explore</span>
-              Navigation Helper
+              {tr('nfHelperTitle')}
             </h3>
             <p className="text-body-sm text-on-surface-variant">
-              Here are some quick shortcuts to get you back on track:
+              {tr('nfHelperBody')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-md pt-xs">
               <Link
@@ -59,8 +63,8 @@ export default function NotFound() {
                   <span className="material-symbols-outlined">storefront</span>
                 </div>
                 <div>
-                  <span className="font-bold text-body-md text-primary block">Marketplace</span>
-                  <span className="text-[11px] text-on-surface-variant block">Browse approved listings</span>
+                  <span className="font-bold text-body-md text-primary block">{tr('nfMarketplace')}</span>
+                  <span className="text-[11px] text-on-surface-variant block">{tr('nfMarketplaceDesc')}</span>
                 </div>
               </Link>
 
@@ -72,8 +76,8 @@ export default function NotFound() {
                   <span className="material-symbols-outlined">dashboard</span>
                 </div>
                 <div>
-                  <span className="font-bold text-body-md text-primary block">Seller Dashboard</span>
-                  <span className="text-[11px] text-on-surface-variant block">Manage syncs & logs</span>
+                  <span className="font-bold text-body-md text-primary block">{tr('nfDashboard')}</span>
+                  <span className="text-[11px] text-on-surface-variant block">{tr('nfDashboardDesc')}</span>
                 </div>
               </Link>
             </div>
@@ -86,7 +90,7 @@ export default function NotFound() {
               className="inline-flex items-center gap-xs bg-primary text-on-primary px-xxl py-md rounded-xl font-bold hover:opacity-90 active:scale-[0.98] transition-all shadow-md text-label-md"
             >
               <span className="material-symbols-outlined">arrow_back</span>
-              Go to Home Page
+              {tr('nfGoHome')}
             </Link>
           </div>
         </div>
@@ -95,7 +99,7 @@ export default function NotFound() {
       {/* Footer */}
       <footer className="bg-surface-container-lowest border-t border-outline-variant/30 py-lg mt-xxl text-center text-xs text-on-surface-variant/60">
         <div className="max-w-container-max mx-auto px-lg">
-          © {new Date().getFullYear()} GroupMarket Inc. All rights reserved.
+          {tr('footerRights').replace('{year}', String(new Date().getFullYear()))}
         </div>
       </footer>
     </div>

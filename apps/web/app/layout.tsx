@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import './globals.css';
+import { getLang, LANG_COOKIE } from './lib/i18n';
+import { LangProvider } from './components/lang-provider';
 
 export const metadata: Metadata = {
   title: 'GroupMarket | Premium Community Marketplaces',
@@ -11,13 +14,14 @@ export const metadata: Metadata = {
 // the server actions invoked from them.
 export const maxDuration = 60;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const lang = getLang((await cookies()).get(LANG_COOKIE)?.value);
   return (
-    <html lang="en" className="light">
+    <html lang={lang} className="light">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -26,7 +30,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-background text-on-surface font-sans selection:bg-secondary-container selection:text-on-secondary-container min-h-screen flex flex-col">
-        {children}
+        <LangProvider lang={lang}>{children}</LangProvider>
       </body>
     </html>
   );

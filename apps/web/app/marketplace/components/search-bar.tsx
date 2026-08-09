@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { makeT } from '../../lib/i18n';
+import { marketplaceStrings } from '../../lib/i18n/marketplace';
+import { useLang } from '../../components/lang-provider';
 
 interface SearchBarProps {
   search: string;
@@ -30,6 +33,7 @@ export default function SearchBar({
   setSortBy,
 }: SearchBarProps) {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const tr = makeT(marketplaceStrings, useLang());
 
   return (
     <div className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm space-y-md">
@@ -44,14 +48,14 @@ export default function SearchBar({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search listings by title, description, or group..."
+            placeholder={tr('searchPlaceholder')}
             className="w-full h-12 pl-[42px] pr-xl rounded-lg bg-surface border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-body-md"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
               className="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-primary transition-colors"
-              aria-label="Clear search"
+              aria-label={tr('clearSearch')}
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -67,9 +71,9 @@ export default function SearchBar({
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full h-12 px-md pr-xl rounded-lg bg-surface border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-body-sm appearance-none cursor-pointer"
             >
-              <option value="newest">Sort by: Newest</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
+              <option value="newest">{tr('sortNewest')}</option>
+              <option value="price-asc">{tr('sortPriceAsc')}</option>
+              <option value="price-desc">{tr('sortPriceDesc')}</option>
             </select>
             <span className="material-symbols-outlined absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant/60 pointer-events-none">
               expand_more
@@ -82,7 +86,7 @@ export default function SearchBar({
             className="sm:hidden flex items-center justify-center gap-xs px-md h-12 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/30 rounded-lg text-label-md font-bold transition-all whitespace-nowrap"
           >
             <span className="material-symbols-outlined">tune</span>
-            <span>Filters</span>
+            <span>{tr('filters')}</span>
           </button>
         </div>
       </div>
@@ -91,7 +95,7 @@ export default function SearchBar({
       <div className={`${showMobileFilters ? 'block' : 'hidden'} sm:grid sm:grid-cols-3 gap-lg pt-sm border-t border-outline-variant/20`}>
         {/* Category Filter */}
         <div className="space-y-xs">
-          <label className="text-label-sm font-bold text-on-surface-variant">Category</label>
+          <label className="text-label-sm font-bold text-on-surface-variant">{tr('categoryLabel')}</label>
           <div className="relative">
             <select
               value={category}
@@ -100,7 +104,7 @@ export default function SearchBar({
             >
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat === 'All' ? 'All Categories' : cat}
+                  {cat === 'All' ? tr('allCategories') : cat}
                 </option>
               ))}
             </select>
@@ -112,14 +116,14 @@ export default function SearchBar({
 
         {/* Price Range Filter */}
         <div className="space-y-xs col-span-2">
-          <label className="text-label-sm font-bold text-on-surface-variant">Price Range (₾)</label>
+          <label className="text-label-sm font-bold text-on-surface-variant">{tr('priceRangeLabel')}</label>
           <div className="flex items-center gap-sm">
             <div className="relative w-full">
               <input
                 type="number"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
-                placeholder="Min Price"
+                placeholder={tr('minPrice')}
                 className="w-full h-10 px-md rounded-lg bg-surface border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-body-sm"
               />
             </div>
@@ -129,7 +133,7 @@ export default function SearchBar({
                 type="number"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
-                placeholder="Max Price"
+                placeholder={tr('maxPrice')}
                 className="w-full h-10 px-md rounded-lg bg-surface border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-body-sm"
               />
             </div>

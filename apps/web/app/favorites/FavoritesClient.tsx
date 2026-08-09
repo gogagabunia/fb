@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { toggleFavoriteAction } from '../actions';
 import Sidebar from '../components/sidebar';
 import { formatPrice } from '../lib/format-price';
+import { makeT } from '../lib/i18n';
+import { favoritesStrings } from '../lib/i18n/favorites';
+import { useLang } from '../components/lang-provider';
 
 interface Listing {
   id: string;
@@ -36,6 +39,7 @@ interface FavoritesClientProps {
  * mount and no skeleton.
  */
 export default function FavoritesClient({ initialFavorites, user }: FavoritesClientProps) {
+  const tr = makeT(favoritesStrings, useLang());
   const [favorites, setFavorites] = useState<Listing[]>(initialFavorites);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -51,12 +55,12 @@ export default function FavoritesClient({ initialFavorites, user }: FavoritesCli
       const result = await toggleFavoriteAction(listingId);
       if (result.success) {
         setFavorites(favorites.filter((f) => f.id !== listingId));
-        showToast(`"${listingTitle}" removed from saved listings.`, 'info');
+        showToast(tr('removedToast').replace('{title}', listingTitle), 'info');
       } else {
-        showToast(result.error || 'Failed to remove from saved.', 'error');
+        showToast(result.error || tr('removeFailed'), 'error');
       }
     } catch (error: any) {
-      showToast(error.message || 'Error occurred.', 'error');
+      showToast(error.message || tr('errorOccurred'), 'error');
     }
   }
 
@@ -87,9 +91,9 @@ export default function FavoritesClient({ initialFavorites, user }: FavoritesCli
           {/* Header */}
           <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md mb-xl border-b border-outline-variant/20 pb-md">
             <div>
-              <h2 className="text-display-lg font-bold text-primary">Saved Listings</h2>
+              <h2 className="text-display-lg font-bold text-primary">{tr('heading')}</h2>
               <p className="text-body-lg text-on-surface-variant mt-xs">
-                Browse and manage the classified postings you bookmarked.
+                {tr('subheading')}
               </p>
             </div>
             <Link
@@ -97,7 +101,7 @@ export default function FavoritesClient({ initialFavorites, user }: FavoritesCli
               className="bg-secondary text-on-secondary px-xl py-md rounded-xl font-bold flex items-center gap-sm shadow-md hover:shadow-lg transition-all active:scale-95 text-label-md"
             >
               <span className="material-symbols-outlined">storefront</span>
-              Explore Feed
+              {tr('exploreFeed')}
             </Link>
           </header>
 
@@ -106,15 +110,15 @@ export default function FavoritesClient({ initialFavorites, user }: FavoritesCli
               <span className="material-symbols-outlined text-[72px] text-slate-300 mb-md" style={{ fontVariationSettings: "'FILL' 1" }}>
                 bookmark
               </span>
-              <h3 className="text-headline-sm font-bold text-primary mb-xs">No Saved Listings</h3>
+              <h3 className="text-headline-sm font-bold text-primary mb-xs">{tr('emptyHeading')}</h3>
               <p className="text-body-md text-on-surface-variant max-w-sm mb-lg">
-                Bookmark listings in the public feed to keep track of items you are interested in.
+                {tr('emptyBody')}
               </p>
               <Link
                 href="/marketplace"
                 className="px-xl py-md border border-primary text-primary hover:bg-primary hover:text-on-primary rounded-lg text-label-md font-bold transition-all shadow-sm flex items-center gap-xs"
               >
-                Browse Marketplace Feed
+                {tr('browseMarketplace')}
               </Link>
             </div>
           ) : (
@@ -134,7 +138,7 @@ export default function FavoritesClient({ initialFavorites, user }: FavoritesCli
                       <button
                         onClick={() => handleUnfavorite(post.id, post.title)}
                         className="bg-white/95 backdrop-blur-md p-xs rounded-full shadow-sm text-error transition-colors flex items-center justify-center hover:scale-110 active:scale-95"
-                        title="Remove from saved"
+                        title={tr('removeFromSaved')}
                       >
                         <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                           favorite
@@ -157,7 +161,7 @@ export default function FavoritesClient({ initialFavorites, user }: FavoritesCli
                         {post.description}
                       </p>
                       <p className="text-slate-400 text-[11px] mt-2 truncate">
-                        📍 {post.location || 'Local'} • {post.importedPost?.group.name || 'Facebook'}
+                        📍 {post.location || tr('local')} • {post.importedPost?.group.name || 'Facebook'}
                       </p>
                     </div>
                     <div className="flex gap-sm mt-auto">
@@ -165,7 +169,7 @@ export default function FavoritesClient({ initialFavorites, user }: FavoritesCli
                         href={`/listing-detail/${post.id}`}
                         className="flex-grow py-2 bg-primary text-on-primary rounded-lg text-xs font-bold transition-all text-center hover:opacity-90 active:scale-[0.98]"
                       >
-                        View Info
+                        {tr('viewInfo')}
                       </Link>
                     </div>
                   </div>

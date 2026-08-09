@@ -5,8 +5,12 @@ import { getCurrentUser, updatePasswordAction } from '../auth-actions';
 import { updateProfileDetailsAction } from '../actions';
 import Sidebar from '../components/sidebar';
 import { DashboardSkeleton } from '../components/skeleton';
+import { makeT } from '../lib/i18n';
+import { settingsStrings } from '../lib/i18n/settings';
+import { useLang } from '../components/lang-provider';
 
 export default function SettingsPage() {
+  const tr = makeT(settingsStrings, useLang());
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,14 +55,14 @@ export default function SettingsPage() {
     try {
       const result = await updateProfileDetailsAction(firstName, lastName);
       if (result.success) {
-        setProfileMessage({ text: 'Profile details updated successfully!', type: 'success' });
+        setProfileMessage({ text: tr('profileUpdated'), type: 'success' });
         // Reload user info to sync other components
         loadData();
       } else {
-        setProfileMessage({ text: result.error || 'Failed to update profile details.', type: 'error' });
+        setProfileMessage({ text: result.error || tr('profileUpdateFailed'), type: 'error' });
       }
     } catch (error: any) {
-      setProfileMessage({ text: error.message || 'Error occurred.', type: 'error' });
+      setProfileMessage({ text: error.message || tr('errorOccurred'), type: 'error' });
     } finally {
       setSubmittingProfile(false);
     }
@@ -70,13 +74,13 @@ export default function SettingsPage() {
     setPasswordMessage(null);
 
     if (newPassword.length < 6) {
-      setPasswordMessage({ text: 'New password must be at least 6 characters.', type: 'error' });
+      setPasswordMessage({ text: tr('newPasswordTooShort'), type: 'error' });
       setSubmittingPassword(false);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordMessage({ text: 'New passwords do not match.', type: 'error' });
+      setPasswordMessage({ text: tr('newPasswordsDoNotMatch'), type: 'error' });
       setSubmittingPassword(false);
       return;
     }
@@ -89,15 +93,15 @@ export default function SettingsPage() {
 
       const result = await updatePasswordAction(formData);
       if (result.success) {
-        setPasswordMessage({ text: 'Password successfully changed!', type: 'success' });
+        setPasswordMessage({ text: tr('passwordChanged'), type: 'success' });
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       } else {
-        setPasswordMessage({ text: result.error || 'Incorrect current password.', type: 'error' });
+        setPasswordMessage({ text: result.error || tr('incorrectCurrentPassword'), type: 'error' });
       }
     } catch (error: any) {
-      setPasswordMessage({ text: error.message || 'Error occurred.', type: 'error' });
+      setPasswordMessage({ text: error.message || tr('errorOccurred'), type: 'error' });
     } finally {
       setSubmittingPassword(false);
     }
@@ -114,9 +118,9 @@ export default function SettingsPage() {
           <div className="w-full max-w-3xl py-lg space-y-xl">
             {/* Header */}
             <header className="border-b border-outline-variant/20 pb-md">
-              <h2 className="text-display-lg font-bold text-primary">Account Settings</h2>
+              <h2 className="text-display-lg font-bold text-primary">{tr('title')}</h2>
               <p className="text-body-lg text-on-surface-variant mt-xs">
-                Manage your user details, login security credentials, and preferences.
+                {tr('subtitle')}
               </p>
             </header>
 
@@ -128,7 +132,7 @@ export default function SettingsPage() {
                 <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
                   <form onSubmit={handleProfileSubmit} className="space-y-md">
                     <h3 className="text-title-lg font-bold text-primary border-b border-outline-variant/10 pb-xs">
-                      Update Profile Info
+                      {tr('profileHeading')}
                     </h3>
 
                     {profileMessage && (
@@ -142,37 +146,37 @@ export default function SettingsPage() {
                     )}
 
                     <div className="flex flex-col gap-xs">
-                      <label className="text-label-sm font-bold text-on-surface-variant">First Name</label>
+                      <label className="text-label-sm font-bold text-on-surface-variant">{tr('firstNameLabel')}</label>
                       <input
                         type="text"
                         required
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         className="w-full h-11 px-md rounded-lg border border-outline-variant/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-body-md"
-                        placeholder="First Name"
+                        placeholder={tr('firstNamePlaceholder')}
                       />
                     </div>
 
                     <div className="flex flex-col gap-xs">
-                      <label className="text-label-sm font-bold text-on-surface-variant">Last Name</label>
+                      <label className="text-label-sm font-bold text-on-surface-variant">{tr('lastNameLabel')}</label>
                       <input
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         className="w-full h-11 px-md rounded-lg border border-outline-variant/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-body-md"
-                        placeholder="Last Name (Optional)"
+                        placeholder={tr('lastNamePlaceholder')}
                       />
                     </div>
 
                     <div className="flex flex-col gap-xs">
-                      <label className="text-label-sm font-bold text-on-surface-variant">Email Address</label>
+                      <label className="text-label-sm font-bold text-on-surface-variant">{tr('emailLabel')}</label>
                       <input
                         type="email"
                         disabled
                         value={user?.email || ''}
                         className="w-full h-11 px-md rounded-lg bg-surface-container-low border border-outline-variant/30 text-on-surface-variant opacity-75 outline-none cursor-not-allowed text-body-md"
                       />
-                      <span className="text-[10px] text-slate-400">Email cannot be modified for security.</span>
+                      <span className="text-[10px] text-slate-400">{tr('emailNote')}</span>
                     </div>
 
                     <button
@@ -180,7 +184,7 @@ export default function SettingsPage() {
                       disabled={submittingProfile}
                       className="w-full h-11 bg-primary text-on-primary rounded-lg text-label-md font-bold shadow hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
                     >
-                      {submittingProfile ? 'Saving Details...' : 'Save Profile Details'}
+                      {submittingProfile ? tr('savingProfile') : tr('saveProfile')}
                     </button>
                   </form>
                 </div>
@@ -189,7 +193,7 @@ export default function SettingsPage() {
                 <div className="bg-surface-container-lowest p-xl rounded-xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
                   <form onSubmit={handlePasswordSubmit} className="space-y-md">
                     <h3 className="text-title-lg font-bold text-primary border-b border-outline-variant/10 pb-xs">
-                      Change Security Password
+                      {tr('passwordHeading')}
                     </h3>
 
                     {passwordMessage && (
@@ -203,7 +207,7 @@ export default function SettingsPage() {
                     )}
 
                     <div className="flex flex-col gap-xs">
-                      <label className="text-label-sm font-bold text-on-surface-variant">Current Password</label>
+                      <label className="text-label-sm font-bold text-on-surface-variant">{tr('currentPasswordLabel')}</label>
                       <input
                         type="password"
                         required
@@ -215,19 +219,19 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="flex flex-col gap-xs">
-                      <label className="text-label-sm font-bold text-on-surface-variant">New Password</label>
+                      <label className="text-label-sm font-bold text-on-surface-variant">{tr('newPasswordLabel')}</label>
                       <input
                         type="password"
                         required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         className="w-full h-11 px-md rounded-lg border border-outline-variant/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-body-md"
-                        placeholder="At least 6 characters"
+                        placeholder={tr('newPasswordPlaceholder')}
                       />
                     </div>
 
                     <div className="flex flex-col gap-xs">
-                      <label className="text-label-sm font-bold text-on-surface-variant">Confirm New Password</label>
+                      <label className="text-label-sm font-bold text-on-surface-variant">{tr('confirmNewPasswordLabel')}</label>
                       <input
                         type="password"
                         required
@@ -243,7 +247,7 @@ export default function SettingsPage() {
                       disabled={submittingPassword}
                       className="w-full h-11 bg-secondary text-on-secondary rounded-lg text-label-md font-bold shadow hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
                     >
-                      {submittingPassword ? 'Updating Password...' : 'Update Password Credentials'}
+                      {submittingPassword ? tr('updatingPassword') : tr('updatePassword')}
                     </button>
                   </form>
                 </div>

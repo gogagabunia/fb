@@ -2,6 +2,9 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { makeT } from './lib/i18n';
+import { miscStrings } from './lib/i18n/misc';
+import { useLang } from './components/lang-provider';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -9,6 +12,7 @@ interface ErrorProps {
 }
 
 export default function ErrorBoundary({ error, reset }: ErrorProps) {
+  const tr = makeT(miscStrings, useLang());
   useEffect(() => {
     // Log the error to console
     console.error('GroupMarket Runtime Error Caught:', error);
@@ -23,7 +27,7 @@ export default function ErrorBoundary({ error, reset }: ErrorProps) {
             GroupMarket
           </Link>
           <Link href="/marketplace" className="text-on-surface-variant hover:text-primary transition-colors font-label-md">
-            Browse Marketplace
+            {tr('browseMarketplace')}
           </Link>
         </div>
       </nav>
@@ -47,10 +51,10 @@ export default function ErrorBoundary({ error, reset }: ErrorProps) {
 
           <div className="space-y-sm">
             <h1 className="text-display-md md:text-display-lg font-extrabold text-primary tracking-tight leading-tight">
-              Something went wrong
+              {tr('errorTitle')}
             </h1>
             <p className="text-body-lg text-on-surface-variant max-w-md mx-auto leading-relaxed">
-              An unexpected application error occurred while processing your request. Don't worry, your data is safe.
+              {tr('errorBody')}
             </p>
           </div>
 
@@ -61,14 +65,14 @@ export default function ErrorBoundary({ error, reset }: ErrorProps) {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-xs bg-primary text-on-primary px-xxl py-md rounded-xl font-bold hover:opacity-90 active:scale-[0.98] transition-all shadow-md text-label-md"
             >
               <span className="material-symbols-outlined">refresh</span>
-              Try Again
+              {tr('tryAgain')}
             </button>
             <Link
               href="/"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-xs bg-surface-container-high hover:bg-surface-container-highest text-primary px-xxl py-md rounded-xl font-bold active:scale-[0.98] transition-all border border-outline-variant/30 text-label-md"
             >
               <span className="material-symbols-outlined">home</span>
-              Go Home
+              {tr('goHome')}
             </Link>
           </div>
 
@@ -78,18 +82,18 @@ export default function ErrorBoundary({ error, reset }: ErrorProps) {
               <summary className="flex justify-between items-center p-md cursor-pointer hover:bg-surface-container-high transition-colors select-none">
                 <span className="font-bold text-body-sm text-primary flex items-center gap-xs">
                   <span className="material-symbols-outlined text-[18px]">terminal</span>
-                  Technical Details (for administrators)
+                  {tr('techDetails')}
                 </span>
                 <span className="material-symbols-outlined text-[20px] transition-transform group-open:rotate-180">
                   keyboard_arrow_down
                 </span>
               </summary>
               <div className="p-md border-t border-outline-variant/30 bg-surface-container-lowest font-mono text-[11px] text-error overflow-x-auto max-h-48 whitespace-pre-wrap leading-relaxed select-all">
-                <p className="font-bold mb-xs">Error Name: {error?.name || 'Runtime Error'}</p>
-                <p className="font-bold mb-md">Message: {error?.message || 'No descriptive message provided.'}</p>
+                <p className="font-bold mb-xs">{tr('errorNameLabel')} {error?.name || tr('runtimeErrorFallback')}</p>
+                <p className="font-bold mb-md">{tr('messageLabel')} {error?.message || tr('noMessageFallback')}</p>
                 {error?.digest && <p className="mb-md font-semibold text-slate-500">Digest: {error.digest}</p>}
                 <p className="text-[10px] text-on-surface-variant font-sans">
-                  The error was captured locally. If this persists, please contact GroupMarket customer support with the above details.
+                  {tr('errorFooterNote')}
                 </p>
               </div>
             </details>
@@ -100,7 +104,7 @@ export default function ErrorBoundary({ error, reset }: ErrorProps) {
       {/* Footer */}
       <footer className="bg-surface-container-lowest border-t border-outline-variant/30 py-lg mt-xxl text-center text-xs text-on-surface-variant/60">
         <div className="max-w-container-max mx-auto px-lg">
-          © {new Date().getFullYear()} GroupMarket Inc. All rights reserved.
+          {tr('footerRights').replace('{year}', String(new Date().getFullYear()))}
         </div>
       </footer>
     </div>
