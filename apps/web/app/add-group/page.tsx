@@ -48,7 +48,7 @@ export default function AddGroupWizardPage() {
   const [syncingGroupId, setSyncingGroupId] = useState<string | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [user, setUser] = useState<{ firstName: string | null; lastName: string | null; email: string } | null>(null);
+  const [user, setUser] = useState<{ firstName: string | null; lastName: string | null; email: string; role: string | null } | null>(null);
 
   useEffect(() => {
     async function loadInitialData() {

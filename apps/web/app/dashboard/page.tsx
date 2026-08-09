@@ -43,7 +43,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [user, setUser] = useState<{ firstName: string | null; lastName: string | null; email: string } | null>(null);
+  const [user, setUser] = useState<{ firstName: string | null; lastName: string | null; email: string; role: string | null } | null>(null);
 
   const [selectedGroup, setSelectedGroup] = useState('');
   const [rawText, setRawText] = useState('');

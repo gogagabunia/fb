@@ -12,6 +12,9 @@ export const sidebarStrings = {
 
   // Identity / footer
   sellerPortal: { ka: 'გამყიდველის პორტალი', en: 'Seller Portal' },
+  roleAdmin: { ka: 'ადმინი', en: 'Admin' },
+  roleSeller: { ka: 'გამყიდველი', en: 'Seller' },
+  roleBuyer: { ka: 'მყიდველი', en: 'Buyer' },
   syncNewPosts: { ka: 'ახალი პოსტების სინქრონიზაცია', en: 'Sync New Posts' },
   syncingPosts: { ka: 'პოსტები მუშავდება…', en: 'Parsing Posts...' },
   databaseEngine: { ka: 'მონაცემთა ბაზა', en: 'Database Engine' },
