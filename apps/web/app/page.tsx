@@ -206,40 +206,6 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* Seller band: the pitch for group owners, compressed to one strip. */}
-        <section className="mt-xl">
-          <div className="bg-primary rounded-2xl px-lg py-lg md:px-xl flex flex-col md:flex-row items-start md:items-center gap-lg">
-            <div className="flex-1">
-              <h2 className="text-headline-sm font-bold text-on-primary">{t('sellerBandTitle', lang)}</h2>
-              <p className="text-body-md text-primary-fixed-dim mt-xs max-w-xl">{t('sellerBandBody', lang)}</p>
-            </div>
-            <div className="flex items-center gap-sm text-primary-fixed-dim text-label-md shrink-0">
-              <span className="bg-primary-container rounded-lg px-sm py-2">1 · {t('step1', lang)}</span>
-              <span aria-hidden="true">→</span>
-              <span className="bg-primary-container rounded-lg px-sm py-2">2 · {t('step2', lang)}</span>
-              <span aria-hidden="true">→</span>
-              <span className="bg-primary-container rounded-lg px-sm py-2">3 · {t('step3', lang)}</span>
-            </div>
-            {!viewer ? (
-              <Link
-                href="/register?role=seller"
-                className="shrink-0 px-lg py-3 rounded-lg bg-secondary-container text-on-secondary-container font-label-md font-bold hover:opacity-90 transition-all"
-              >
-                {t('startSelling', lang)}
-              </Link>
-            ) : can(viewer.role, 'sell') ? (
-              <Link
-                href="/dashboard"
-                className="shrink-0 px-lg py-3 rounded-lg bg-secondary-container text-on-secondary-container font-label-md font-bold hover:opacity-90 transition-all"
-              >
-                {t('openDashboard', lang)}
-              </Link>
-            ) : (
-              // Buyers cannot self-upgrade — the admin changes roles.
-              <p className="text-label-md text-primary-fixed-dim shrink-0 max-w-[220px]">{t('buyerNote', lang)}</p>
-            )}
-          </div>
-        </section>
       </main>
 
       <footer className="bg-surface border-t border-outline-variant/20 py-md px-md text-center text-label-sm text-on-surface-variant">

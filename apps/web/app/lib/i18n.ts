@@ -63,38 +63,6 @@ export const strings = {
     ka: 'ჯერ ცარიელია — განცხადებები გამოჩნდება, როგორც კი გამყიდველები დაამტკიცებენ.',
     en: 'Nothing here yet — listings appear as sellers approve them.',
   },
-  sellerBandTitle: {
-    ka: 'გაქვს Facebook-ის გასაყიდი ჯგუფი?',
-    en: 'Own a Facebook selling group?',
-  },
-  sellerBandBody: {
-    ka: 'დააკავშირე ერთხელ — პოსტები ავტომატურად შემოვა, შენ ამტკიცებ და აქ ქვეყნდება სწორ კატეგორიაში.',
-    en: 'Connect it once — posts import automatically, you approve them, they go live here in the right category.',
-  },
-  step1: {
-    ka: 'დააკავშირე',
-    en: 'Connect',
-  },
-  step2: {
-    ka: 'დაამტკიცე',
-    en: 'Approve',
-  },
-  step3: {
-    ka: 'გაყიდე',
-    en: 'Sell',
-  },
-  startSelling: {
-    ka: 'დაიწყე გაყიდვა',
-    en: 'Start selling',
-  },
-  openDashboard: {
-    ka: 'გახსენი დაფა',
-    en: 'Open your dashboard',
-  },
-  buyerNote: {
-    ka: 'შენი ანგარიში მყიდველის ანგარიშია. სთხოვე ადმინს, გამყიდველად გადაგიყვანოს.',
-    en: 'Your account is a buyer account. Ask the site admin to make you a seller.',
-  },
   footerBlurb: {
     ka: 'GroupMarket — მეორადი ნივთები ადგილობრივი Facebook ჯგუფებიდან, შემოწმებული ნამდვილი გამყიდველების მიერ.',
     en: 'GroupMarket — second-hand listings from local Facebook groups, checked by real sellers.',

@@ -8,6 +8,11 @@ const config: Config = {
   darkMode: 'class',
   theme: {
     extend: {
+      // Inter renders Latin; Georgian glyphs (which Inter lacks) fall through
+      // to Noto Sans Georgian instead of the system's Sylfaen.
+      fontFamily: {
+        sans: ['Inter', '"Noto Sans Georgian"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
         "on-secondary-container": "#00714d",
         "surface-tint": "#4f6073",
