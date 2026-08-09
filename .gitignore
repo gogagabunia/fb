@@ -50,3 +50,6 @@ web-build/
 
 # Generated at build time from browser-extension/
 apps/web/public/groupmarket-connector.zip
+
+# Brainstorming visual companion sessions
+.superpowers/
