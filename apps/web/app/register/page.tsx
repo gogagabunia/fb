@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { registerAction } from '../auth-actions';
 import { makeT } from '../lib/i18n';
 import { authStrings } from '../lib/i18n/auth';
@@ -11,6 +12,7 @@ import { LangSwitcher } from '../components/lang-switcher';
 export default function RegisterPage() {
   const lang = useLang();
   const tr = makeT(authStrings, lang);
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<'BUYER' | 'SELLER'>('BUYER');
@@ -51,8 +53,14 @@ export default function RegisterPage() {
       if (result?.error) {
         setError(result.error);
         setLoading(false);
+        return;
       }
-      // If successful, registerAction will redirect — no need to handle here
+      if (result?.success) {
+        // Account created but unverified — go enter the emailed code.
+        router.push(`/verify-email?email=${encodeURIComponent(result.email)}`);
+        return;
+      }
+      setLoading(false);
     } catch (err: any) {
       // redirect() throws a NEXT_REDIRECT error which is expected
       if (err?.digest?.includes('NEXT_REDIRECT')) return;

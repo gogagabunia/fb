@@ -87,7 +87,7 @@ Generate the secrets with `openssl rand -base64 48`.
 | `STRIPE_SECRET_KEY` | Listing promotion returns 503 (`Payments are not configured`). |
 | `STRIPE_WEBHOOK_SECRET` | Required alongside the Stripe key — promotions are applied by the webhook, not at checkout. |
 | `BLOB_READ_WRITE_TOKEN` | Listing images keep pointing at Facebook CDN URLs, which expire — published listings lose their photos after a few days. Set it (Vercel → Storage → Blob) to copy images into permanent storage at import. |
-| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Moderation alerts log to stdout instead of sending. |
+| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Moderation alerts **and email-verification codes** log to stdout instead of sending. New registrations must confirm a 6-digit code before their first login, so a production deploy without SMTP set can read codes only from the server logs — configure SMTP so real users receive them. |
 | `CRON_SECRET` | Checked as `Authorization: Bearer …` on `/api/cron/scrape` in production. |
 | `NEXT_PUBLIC_APP_URL` | Defaults to `http://localhost:3000` in links and redirects. |
 | `SYNC_MAX_POSTS` | How many recent posts each sync pulls per group. Defaults to 5. |

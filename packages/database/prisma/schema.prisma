@@ -39,6 +39,15 @@ model User {
   lastName       String?
   imageUrl       String?
   role           Role             @default(BUYER)
+  // Email verification. Defaults to true so accounts that predate this feature
+  // (and every row a plain `db push` back-fills) stay usable — only fresh
+  // registrations set it false and must confirm a code before their first
+  // session. The code is stored bcrypt-hashed, never in clear text; the
+  // attempts counter caps online brute-forcing of the 6-digit code.
+  emailVerified            Boolean   @default(true)
+  verificationCodeHash     String?
+  verificationCodeExpiresAt DateTime?
+  verificationAttempts     Int       @default(0)
   // Facebook session for private-group scraping (AES-256-GCM encrypted cookie JSON)
   fbSessionCookies String?        @db.Text
   fbSessionStatus  String?        // 'ACTIVE' | 'EXPIRED' | 'NONE'
