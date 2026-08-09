@@ -143,4 +143,54 @@ export const authStrings = {
     ka: 'პაროლები არ ემთხვევა.',
     en: 'Passwords do not match.',
   },
+
+  // Email verification page
+  verifyTitle: {
+    ka: 'დაადასტურე ელფოსტა',
+    en: 'Verify your email',
+  },
+  verifySubtitle: {
+    ka: 'გამოგიგზავნეთ 6-ნიშნა კოდი. შეიყვანე იგი ანგარიშის გასააქტიურებლად.',
+    en: 'We sent a 6-digit code to your email. Enter it to activate your account.',
+  },
+  verifyCodeLabel: {
+    ka: 'ვერიფიკაციის კოდი *',
+    en: 'Verification code *',
+  },
+  verifyCodePlaceholder: {
+    ka: '6-ნიშნა კოდი',
+    en: '6-digit code',
+  },
+  verifyButton: {
+    ka: 'დადასტურება',
+    en: 'Verify',
+  },
+  verifying: {
+    ka: 'მოწმდება...',
+    en: 'Verifying...',
+  },
+  verifyMissingEmail: {
+    ka: 'ელფოსტის მისამართი ვერ მოიძებნა. გაიარე რეგისტრაცია თავიდან.',
+    en: 'Email address is missing. Please register again.',
+  },
+  didNotGetCode: {
+    ka: 'არ მიგიღია კოდი?',
+    en: "Didn't get the code?",
+  },
+  resendCode: {
+    ka: 'ხელახლა გამოგზავნა',
+    en: 'Resend code',
+  },
+  resendingCode: {
+    ka: 'იგზავნება...',
+    en: 'Sending...',
+  },
+  codeResent: {
+    ka: 'ახალი კოდი გამოიგზავნა. შეამოწმე ელფოსტა.',
+    en: 'A new code has been sent. Check your email.',
+  },
+  needsVerificationNotice: {
+    ka: 'ჯერ დაადასტურე ელფოსტა. ახალი კოდი გამოგიგზავნეთ.',
+    en: 'Please verify your email first. We sent you a new code.',
+  },
 } as const satisfies Record<string, Record<Lang, string>>;

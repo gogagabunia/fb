@@ -21,6 +21,92 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Send the account-verification code to a freshly registered user. Mirrors the
+ * moderation-alert transport: real SMTP when configured, otherwise the code is
+ * printed to stdout so local development (where no SMTP is set) can still read
+ * it and complete the flow.
+ */
+export async function sendVerificationEmail(to: string, code: string) {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM || 'no-reply@groupmarket.com';
+
+  // The code is app-generated (six digits) so it needs no escaping, but run it
+  // through escapeHtml anyway — defence in depth against ever passing something
+  // else here.
+  const safeCode = escapeHtml(code);
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Inter', -apple-system, sans-serif; background-color: #f8f9fa; color: #191c1d; margin: 0; padding: 20px; }
+          .container { max-width: 600px; background-color: #ffffff; border: 1px solid #c4c6cd; border-radius: 12px; padding: 32px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+          .header { border-bottom: 1px solid #edeeef; padding-bottom: 16px; margin-bottom: 24px; }
+          .logo { font-size: 24px; font-weight: bold; color: #041627; text-decoration: none; }
+          .title { font-size: 20px; font-weight: bold; color: #041627; margin: 0 0 8px 0; }
+          .code { font-size: 40px; font-weight: bold; letter-spacing: 12px; color: #041627; text-align: center; background: #f3f4f5; border: 1px solid #e7e8e9; border-radius: 10px; padding: 20px; margin: 24px 0; }
+          .footer { font-size: 11px; color: #74777d; text-align: center; margin-top: 32px; border-top: 1px solid #edeeef; padding-top: 16px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <a href="#" class="logo">GroupMarket</a>
+          </div>
+          <h2 class="title">Confirm your email</h2>
+          <p style="font-size: 14px; color: #44474c; line-height: 1.5; margin: 0;">
+            Enter this code on the verification screen to activate your account. It expires in 15 minutes.
+          </p>
+          <div class="code">${safeCode}</div>
+          <p style="font-size: 13px; color: #74777d; line-height: 1.5; margin: 0;">
+            If you didn't create a GroupMarket account, you can safely ignore this email.
+          </p>
+          <div class="footer">
+            © 2026 GroupMarket. Account Security.
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+
+      const info = await transporter.sendMail({
+        from: smtpFrom,
+        to,
+        subject: 'Your GroupMarket verification code',
+        html: htmlContent,
+      });
+
+      console.log(`[Email Sent] Verification code to ${to}, Message ID: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('[Email Failed] Verification email transmission failed:', error);
+      return { success: false, error };
+    }
+  } else {
+    // No SMTP configured — surface the code in the logs so dev can proceed.
+    console.log('\n--- 🔐 EMAIL VERIFICATION CODE (dev emulator) ---');
+    console.log(`To: ${to}`);
+    console.log(`Code: ${code}`);
+    console.log('--- ---------------------------------------- ---\n');
+    return { success: true, simulated: true };
+  }
+}
+
 export async function sendAdminModerationAlert(details: ModerationDetails) {
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;

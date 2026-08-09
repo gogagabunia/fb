@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { loginAction } from '../auth-actions';
 import { makeT } from '../lib/i18n';
 import { authStrings } from '../lib/i18n/auth';
@@ -11,6 +12,7 @@ import { LangSwitcher } from '../components/lang-switcher';
 export default function LoginPage() {
   const lang = useLang();
   const tr = makeT(authStrings, lang);
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -23,6 +25,12 @@ export default function LoginPage() {
 
     try {
       const result = await loginAction(formData);
+      if (result?.needsVerification) {
+        // Account exists but the email is not confirmed; a fresh code was just
+        // sent. Route to the verification screen to finish.
+        router.push(`/verify-email?email=${encodeURIComponent(result.email)}&resent=1`);
+        return;
+      }
       if (result?.error) {
         setError(result.error);
         setLoading(false);
