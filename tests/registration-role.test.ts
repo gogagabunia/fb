@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveRegistrationRole } from '../apps/web/app/lib/registration-role';
+import { resolveRegistrationRole, shouldPromoteToAdmin } from '../apps/web/app/lib/registration-role';
 
 const ADMIN = 'gabuniagoga19@gmail.com';
 
@@ -33,5 +33,30 @@ describe('resolveRegistrationRole', () => {
     // An unset variable must not make some accidental value match.
     expect(resolveRegistrationRole('SELLER', ADMIN, undefined)).toBe('SELLER');
     expect(resolveRegistrationRole(null, '', undefined)).toBe('BUYER');
+  });
+});
+
+describe('shouldPromoteToAdmin', () => {
+  it('promotes the configured admin email when not already ADMIN', () => {
+    expect(shouldPromoteToAdmin(ADMIN, 'BUYER', ADMIN)).toBe(true);
+    expect(shouldPromoteToAdmin(ADMIN, 'SELLER', ADMIN)).toBe(true);
+    expect(shouldPromoteToAdmin(ADMIN, null, ADMIN)).toBe(true);
+  });
+
+  it('matches case-insensitively with stray spaces', () => {
+    expect(shouldPromoteToAdmin('  GabuniaGoga19@Gmail.com ', 'BUYER', ADMIN)).toBe(true);
+  });
+
+  it('is a no-op for an account that is already ADMIN', () => {
+    expect(shouldPromoteToAdmin(ADMIN, 'ADMIN', ADMIN)).toBe(false);
+  });
+
+  it('never promotes a non-matching email', () => {
+    expect(shouldPromoteToAdmin('someone@example.com', 'BUYER', ADMIN)).toBe(false);
+  });
+
+  it('never promotes anyone when ADMIN_EMAIL is unset', () => {
+    expect(shouldPromoteToAdmin(ADMIN, 'BUYER', undefined)).toBe(false);
+    expect(shouldPromoteToAdmin('', 'BUYER', undefined)).toBe(false);
   });
 });

@@ -93,7 +93,7 @@ Generate the secrets with `openssl rand -base64 48`.
 | `SYNC_MAX_POSTS` | How many recent posts each sync pulls per group. Defaults to 5. |
 | `SYNC_SINCE_DAYS` | Date window in days; defaults to 0, meaning no window — just the most recent posts. |
 | `SYNC_REQUIRE_IMAGES` | `false` imports text-only posts too. On by default, so a post with no photo never reaches the queue. |
-| `ADMIN_EMAIL` | Registration with this email (case-insensitive) gets the ADMIN role. Unset → nobody is auto-promoted. |
+| `ADMIN_EMAIL` | Registration with this email (case-insensitive) gets the ADMIN role. An already-existing account with this email is also promoted to ADMIN on its next login, so setting the variable after the fact needs no database edit. Only ever promotes — clearing or changing it never demotes. Unset → nobody is auto-promoted. |
 | `USE_MOCK_SCRAPER` | `true` returns canned posts when a scrape fails. |
 | `ALLOW_SIMULATED_CHECKOUT` | `true` grants promotions without payment. Development only — ignored when `NODE_ENV=production`. |
 

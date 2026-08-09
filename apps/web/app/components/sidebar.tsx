@@ -12,6 +12,7 @@ interface User {
   firstName: string | null;
   lastName: string | null;
   email: string;
+  role?: string | null;
 }
 
 interface SidebarProps {
@@ -25,6 +26,19 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
   const [isOpen, setIsOpen] = useState(false);
   const lang = useLang();
   const tr = makeT(sidebarStrings, lang);
+
+  const roleLabel = (role?: string | null): string | null => {
+    switch ((role || '').toUpperCase()) {
+      case 'ADMIN':
+        return tr('roleAdmin');
+      case 'SELLER':
+        return tr('roleSeller');
+      case 'BUYER':
+        return tr('roleBuyer');
+      default:
+        return null;
+    }
+  };
 
   const navLinks = [
     { id: 'dashboard', label: tr('navDashboard'), icon: 'dashboard', href: '/dashboard' },
@@ -43,6 +57,11 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
         <p className="text-body-sm text-on-surface-variant font-medium truncate">
           {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : tr('sellerPortal')}
         </p>
+        {user && roleLabel(user.role) && (
+          <span className="inline-block mt-xs px-sm py-[2px] rounded-full bg-secondary-container text-on-secondary-container text-label-sm font-bold">
+            {roleLabel(user.role)}
+          </span>
+        )}
       </div>
       <nav className="flex-grow flex flex-col gap-xs">
         {navLinks.map((link) => {
@@ -118,9 +137,16 @@ export default function Sidebar({ activePage, user, onSync, syncing = false }: S
           </button>
           <h1 className="text-title-lg font-bold text-primary">GroupMarket</h1>
         </div>
-        <p className="text-body-sm text-on-surface-variant font-medium max-w-[150px] truncate">
-          {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : tr('sellerPortal')}
-        </p>
+        <div className="flex flex-col items-end max-w-[150px]">
+          <p className="text-body-sm text-on-surface-variant font-medium truncate max-w-full">
+            {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : tr('sellerPortal')}
+          </p>
+          {user && roleLabel(user.role) && (
+            <span className="mt-[2px] px-sm py-[1px] rounded-full bg-secondary-container text-on-secondary-container text-label-sm font-bold">
+              {roleLabel(user.role)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Desktop Sidebar */}

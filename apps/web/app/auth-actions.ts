@@ -4,7 +4,7 @@ import { hashPassword, verifyPassword, createSession, destroySession, getSession
 import { redirect } from 'next/navigation';
 import { authRateLimiter } from './lib/rate-limiter';
 import { prisma } from './lib/prisma';
-import { resolveRegistrationRole } from './lib/registration-role';
+import { resolveRegistrationRole, shouldPromoteToAdmin } from './lib/registration-role';
 
 /**
  * Register a new user with email and password
@@ -99,6 +99,16 @@ export async function loginAction(formData: FormData) {
 
   if (!isValid) {
     return { error: 'Invalid email or password.' };
+  }
+
+  // Reconcile against ADMIN_EMAIL: if the operator set it after this account
+  // already existed, the matching user is promoted to ADMIN here instead of
+  // needing a database edit or a fresh registration. Only ever promotes.
+  if (shouldPromoteToAdmin(user.email, user.role)) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { role: 'ADMIN' },
+    });
   }
 
   // Create session and redirect
