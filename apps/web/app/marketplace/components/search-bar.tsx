@@ -112,7 +112,7 @@ export default function SearchBar({
 
         {/* Price Range Filter */}
         <div className="space-y-xs col-span-2">
-          <label className="text-label-sm font-bold text-on-surface-variant">Price Range ($)</label>
+          <label className="text-label-sm font-bold text-on-surface-variant">Price Range (₾)</label>
           <div className="flex items-center gap-sm">
             <div className="relative w-full">
               <input

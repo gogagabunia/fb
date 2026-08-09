@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getAnalyticsSummaryAction } from '../../actions';
 import { getCurrentUser } from '../../auth-actions';
 import Sidebar from '../../components/sidebar';
+import { formatPrice } from '../../lib/format-price';
 
 // Reads the session cookie, so it can never be prerendered. Declaring it
 // here stops Next attempting a static render and logging the failure at build.
@@ -196,7 +197,7 @@ export default async function AnalyticsPage() {
                             <span className="font-bold text-body-md text-primary block truncate max-w-[150px]" title={item.title}>
                               {item.title}
                             </span>
-                            <span className="text-[10px] text-on-surface-variant font-medium uppercase">{item.categoryRel?.name ?? 'Other'} • ${item.price.toLocaleString()}</span>
+                            <span className="text-[10px] text-on-surface-variant font-medium uppercase">{item.categoryRel?.name ?? 'Other'} • {formatPrice(item.price)}</span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">

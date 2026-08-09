@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { toggleFavoriteAction } from '../actions';
 import Sidebar from '../components/sidebar';
+import { formatPrice } from '../lib/format-price';
 
 interface Listing {
   id: string;
@@ -150,7 +151,7 @@ export default function FavoritesClient({ initialFavorites, user }: FavoritesCli
                         {post.title}
                       </h4>
                       <div className="text-secondary font-bold text-body-lg mb-xs">
-                        ${post.price.toLocaleString()}
+                        {formatPrice(post.price)}
                       </div>
                       <p className="text-on-surface-variant text-body-xs line-clamp-2">
                         {post.description}

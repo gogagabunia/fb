@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getListingById, getSimilarListings } from '../../actions';
+import { formatPrice } from '../../lib/format-price';
 import ListingDetailClient from './ListingDetailClient';
 
 interface PageProps {
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const formattedPrice = `$${Number(listing.price).toLocaleString()}`;
+  const formattedPrice = formatPrice(Number(listing.price));
   return {
     title: `${listing.title} - ${formattedPrice} | GroupMarket`,
     description: listing.description.slice(0, 160),

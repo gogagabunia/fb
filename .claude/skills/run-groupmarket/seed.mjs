@@ -8,10 +8,11 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Slugs must match the fixed list in apps/web/app/lib/categories.ts.
 const CATEGORIES = [
   { name: 'Vehicles', slug: 'vehicles' },
   { name: 'Electronics', slug: 'electronics' },
-  { name: 'Furniture', slug: 'furniture' },
+  { name: 'Home & Furniture', slug: 'home-furniture' },
 ];
 
 const LISTINGS = [
@@ -36,7 +37,7 @@ const LISTINGS = [
   {
     title: 'Oak dining table + 6 chairs',
     price: 320,
-    category: 'furniture',
+    category: 'home-furniture',
     location: 'Kutaisi',
     description: 'Solid oak, seats six. Minor scratch on one leg, otherwise great.',
     specs: { material: 'Oak', seats: 6 },
@@ -106,7 +107,6 @@ for (const [i, l] of LISTINGS.entries()) {
       description: l.description,
       images: [],
       location: l.location,
-      category: l.category,
       specs: l.specs,
       originalPostUrl: `https://facebook.com/groups/local-demo-group/posts/${i}`,
       contactUrl: 'https://m.me/demo',

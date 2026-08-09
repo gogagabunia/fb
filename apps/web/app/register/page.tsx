@@ -1,12 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { registerAction } from '../auth-actions';
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<'BUYER' | 'SELLER'>('BUYER');
+
+  // The homepage's "+ Sell" CTA links here with ?role=seller. Read it after
+  // mount (not useSearchParams) so the page needs no Suspense boundary.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('role') === 'seller') {
+      setRole('SELLER');
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -96,14 +105,14 @@ export default function RegisterPage() {
                 </legend>
                 <div className="grid grid-cols-2 gap-md">
                   <label className="flex items-start gap-sm border border-outline-variant rounded-lg p-md cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-colors">
-                    <input type="radio" name="role" value="BUYER" defaultChecked className="mt-1 accent-current" />
+                    <input type="radio" name="role" value="BUYER" checked={role === 'BUYER'} onChange={() => setRole('BUYER')} className="mt-1 accent-current" />
                     <span>
                       <span className="block font-bold text-body-md text-primary">I want to buy</span>
                       <span className="block text-body-sm text-on-surface-variant">Browse listings and save favorites</span>
                     </span>
                   </label>
                   <label className="flex items-start gap-sm border border-outline-variant rounded-lg p-md cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-colors">
-                    <input type="radio" name="role" value="SELLER" className="mt-1 accent-current" />
+                    <input type="radio" name="role" value="SELLER" checked={role === 'SELLER'} onChange={() => setRole('SELLER')} className="mt-1 accent-current" />
                     <span>
                       <span className="block font-bold text-body-md text-primary">I want to sell</span>
                       <span className="block text-body-sm text-on-surface-variant">Import listings from my Facebook group</span>

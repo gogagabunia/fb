@@ -13,26 +13,28 @@
 
 export interface CategoryDef {
   name: string;
+  /** Georgian display name, used when the welcome page renders in Georgian. */
+  nameKa: string;
   slug: string;
   icon: string;
 }
 
 export const CATEGORIES: readonly CategoryDef[] = [
-  { name: 'Vehicles', slug: 'vehicles', icon: 'directions_car' },
-  { name: 'Electronics', slug: 'electronics', icon: 'devices_other' },
-  { name: 'Phones', slug: 'phones', icon: 'smartphone' },
-  { name: 'Computers', slug: 'computers', icon: 'computer' },
-  { name: 'Game Consoles', slug: 'game-consoles', icon: 'sports_esports' },
-  { name: 'Home & Furniture', slug: 'home-furniture', icon: 'chair' },
-  { name: 'Appliances', slug: 'appliances', icon: 'kitchen' },
-  { name: 'Clothing', slug: 'clothing', icon: 'apparel' },
-  { name: 'Bicycles', slug: 'bicycles', icon: 'pedal_bike' },
-  { name: 'Sports', slug: 'sports', icon: 'sports_soccer' },
-  { name: 'Kids & Baby', slug: 'kids-baby', icon: 'child_care' },
-  { name: 'Pets', slug: 'pets', icon: 'pets' },
-  { name: 'Tools', slug: 'tools', icon: 'construction' },
-  { name: 'Books & Hobbies', slug: 'books-hobbies', icon: 'menu_book' },
-  { name: 'Other', slug: 'other', icon: 'category' },
+  { name: 'Vehicles', nameKa: 'ტრანსპორტი', slug: 'vehicles', icon: 'directions_car' },
+  { name: 'Electronics', nameKa: 'ელექტრონიკა', slug: 'electronics', icon: 'devices_other' },
+  { name: 'Phones', nameKa: 'ტელეფონები', slug: 'phones', icon: 'smartphone' },
+  { name: 'Computers', nameKa: 'კომპიუტერები', slug: 'computers', icon: 'computer' },
+  { name: 'Game Consoles', nameKa: 'სათამაშო კონსოლები', slug: 'game-consoles', icon: 'sports_esports' },
+  { name: 'Home & Furniture', nameKa: 'სახლი და ავეჯი', slug: 'home-furniture', icon: 'chair' },
+  { name: 'Appliances', nameKa: 'საოჯახო ტექნიკა', slug: 'appliances', icon: 'kitchen' },
+  { name: 'Clothing', nameKa: 'ტანსაცმელი', slug: 'clothing', icon: 'apparel' },
+  { name: 'Bicycles', nameKa: 'ველოსიპედები', slug: 'bicycles', icon: 'pedal_bike' },
+  { name: 'Sports', nameKa: 'სპორტი', slug: 'sports', icon: 'sports_soccer' },
+  { name: 'Kids & Baby', nameKa: 'საბავშვო', slug: 'kids-baby', icon: 'child_care' },
+  { name: 'Pets', nameKa: 'შინაური ცხოველები', slug: 'pets', icon: 'pets' },
+  { name: 'Tools', nameKa: 'ხელსაწყოები', slug: 'tools', icon: 'construction' },
+  { name: 'Books & Hobbies', nameKa: 'წიგნები და ჰობი', slug: 'books-hobbies', icon: 'menu_book' },
+  { name: 'Other', nameKa: 'სხვა', slug: 'other', icon: 'category' },
 ] as const;
 
 /** The catch-all every unmatched guess lands in. Guaranteed to exist. */

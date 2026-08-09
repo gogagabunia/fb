@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { formatPrice } from '../lib/format-price';
 import {
   adminListUsers,
   adminSetUserRole,
@@ -253,7 +254,7 @@ export default function AdminPanel() {
                     </td>
                     <td className="p-md">{l.category}</td>
                     <td className="p-md text-on-surface-variant">{l.sellerEmail}</td>
-                    <td className="p-md">${l.price.toLocaleString()}</td>
+                    <td className="p-md">{formatPrice(l.price)}</td>
                     <td className="p-md">
                       <span
                         className={`text-[11px] font-bold px-2 py-1 rounded-full ${
@@ -335,7 +336,7 @@ export default function AdminPanel() {
                 </select>
               </div>
               <div>
-                <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Price ($)</label>
+                <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Price (₾)</label>
                 <input
                   type="number"
                   value={editPrice}

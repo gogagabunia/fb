@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getFavoritedIdsAction, toggleFavoriteAction, recordAnalyticsEventAction } from '../../actions';
 import { isFeaturedNow } from '../../lib/featured';
+import { formatPrice } from '../../lib/format-price';
 
 interface Listing {
   id: string;
@@ -141,7 +142,7 @@ export default function ListingDetailClient({ listing, similarListings }: Listin
   const transmission = specsObj.transmission || specsObj.Transmission || '7-spd PDK';
 
   // Format price
-  const formattedPrice = `$${Number(listing.price).toLocaleString()}`;
+  const formattedPrice = formatPrice(Number(listing.price));
 
   // Time format helper
   const postedDate = listing.createdAt ? new Date(listing.createdAt) : new Date();

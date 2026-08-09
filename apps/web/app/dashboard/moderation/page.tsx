@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
+import { formatPrice } from '../../lib/format-price';
 import {
   getImportedPosts,
   approvePostAction,
@@ -396,7 +397,7 @@ export default function AdminPage() {
                               <span className="text-body-sm text-on-surface-variant font-medium mt-xs">
                                 Classified Price:{' '}
                                 <span className="font-bold text-secondary">
-                                  {post.priceScraped ? `$${post.priceScraped.toLocaleString()}` : 'Not Scraped'}
+                                  {post.priceScraped ? formatPrice(post.priceScraped) : 'Not Scraped'}
                                 </span>
                               </span>
                               <p className={`text-body-sm text-on-surface-variant/80 mt-sm italic ${expandedId === post.id ? '' : 'line-clamp-2'}`}>
@@ -470,7 +471,7 @@ export default function AdminPage() {
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
                                 {[
                                   ['Author', post.authorName || '—'],
-                                  ['Price scraped', post.priceScraped != null ? `$${post.priceScraped.toLocaleString()}` : 'Not found'],
+                                  ['Price scraped', post.priceScraped != null ? formatPrice(post.priceScraped) : 'Not found'],
                                   ['Group', post.group?.name || '—'],
                                   ['Status', post.status],
                                   ['Scraped at', new Date(post.scrapedAt).toLocaleString()],
@@ -566,7 +567,7 @@ export default function AdminPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Price ($)</label>
+                  <label className="block text-label-sm font-bold text-on-surface-variant mb-xs">Price (₾)</label>
                   <input
                     type="number"
                     value={editPrice}

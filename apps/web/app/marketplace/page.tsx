@@ -8,6 +8,7 @@ import SearchBar from './components/search-bar';
 import { MarketplaceSkeleton } from '../components/skeleton';
 import { isFeaturedNow } from '../lib/featured';
 import { categoryBySlug } from '../lib/categories';
+import { formatPrice } from '../lib/format-price';
 
 interface Listing {
   id: string;
@@ -251,7 +252,7 @@ function MarketplaceContent() {
                         <h3 className="text-white text-headline-lg md:text-display-md font-bold mb-xs truncate">{mainFeatured.title}</h3>
                         <div className="flex justify-between items-end gap-md">
                           <p className="text-white/80 text-body-sm md:text-body-lg">
-                            ${mainFeatured.price.toLocaleString()} • {mainFeatured.location || 'Local'}
+                            {formatPrice(mainFeatured.price)} • {mainFeatured.location || 'Local'}
                           </p>
                           <Link
                             href={`/listing-detail/${mainFeatured.id}`}
@@ -282,7 +283,7 @@ function MarketplaceContent() {
                         <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex flex-col justify-end p-md">
                           <h4 className="text-white font-bold text-title-md truncate">{sideFeatured.title}</h4>
                           <div className="flex justify-between items-center mt-xs">
-                            <p className="text-white/95 text-label-md font-bold">${sideFeatured.price.toLocaleString()}</p>
+                            <p className="text-white/95 text-label-md font-bold">{formatPrice(sideFeatured.price)}</p>
                             <Link href={`/listing-detail/${sideFeatured.id}`} className="text-white text-label-sm font-semibold underline">
                               View Detail
                             </Link>
@@ -384,7 +385,7 @@ function MarketplaceContent() {
                             </h4>
                           </div>
                           <div className="text-secondary font-bold text-body-lg mb-xs">
-                            ${post.price.toLocaleString()}
+                            {formatPrice(post.price)}
                           </div>
                           <p className="text-on-surface-variant text-body-xs line-clamp-2">
                             {post.description}
