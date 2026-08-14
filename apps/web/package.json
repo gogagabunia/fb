@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "node ../../scripts/build-extension-zip.mjs && prisma generate --schema=../../packages/database/prisma/schema.prisma && next build",
+    "build": "node ../../scripts/build-extension-zip.mjs && prisma generate --schema=../../packages/database/prisma/schema.prisma && prisma db push --schema=../../packages/database/prisma/schema.prisma --skip-generate && next build",
     "start": "next start",
     "predev": "node ../../scripts/build-extension-zip.mjs"
   },

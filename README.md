@@ -61,6 +61,16 @@ npm run db:migrate                  # prisma db push
 npm run dev                         # turbo run dev → app on :3000
 ```
 
+### Schema changes reach production automatically
+
+The Vercel build runs `prisma db push` (see `apps/web` `build`), so committing a
+schema change and deploying is enough to apply it to the production database —
+no separate local migration step. Pushes are additive-safe: `db push` runs
+without `--accept-data-loss`, so a **destructive** schema change fails the build
+instead of silently dropping columns or data. Handle those deliberately (e.g. a
+one-off SQL like `scripts/reset-and-migrate-roles.sql`) rather than by loosening
+the build.
+
 ## Environment
 
 **Required in production — the app refuses to boot without them.** Both had
